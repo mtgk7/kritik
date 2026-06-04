@@ -1,0 +1,13 @@
+services:
+  - type: worker
+    name: kritik-score-watcher
+    runtime: python
+    rootDir: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python score_watcher.py
+    plan: free
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

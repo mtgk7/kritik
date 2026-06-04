@@ -1,26 +1,196 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --color-base:        oklch(97% 0.005 255);
+  --color-surface-2:   oklch(93.5% 0.007 255);
+  --color-header:      oklch(16% 0.016 255);
+  --color-header-2:    oklch(20% 0.016 255);
+
+  /* Text */
+  --color-text-primary:   oklch(18% 0.012 255);
+  --color-text-secondary: oklch(48% 0.012 255);
+  --color-text-tertiary:  oklch(64% 0.008 255);
+  --color-text-on-dark:   oklch(93% 0.006 255);
+  --color-text-on-dark-2: oklch(65% 0.008 255);
+
+  /* Accent — derin sinyal kırmızısı */
+  --color-accent:        oklch(54% 0.22 25);
+  --color-accent-hover:  oklch(49% 0.22 25);
+  --color-accent-subtle: oklch(95% 0.04 25);
+  --color-accent-text:   oklch(40% 0.18 25);
+
+  /* Semantic */
+  --color-success:       oklch(52% 0.15 145);
+  --color-success-bg:    oklch(95% 0.05 145);
+  --color-warning:       oklch(63% 0.16 75);
+  --color-warning-bg:    oklch(96% 0.06 75);
+  --color-premium:       oklch(68% 0.16 68);
+  --color-premium-bg:    oklch(96% 0.06 68);
+
+  /* Structure */
+  --color-border:        oklch(87% 0.008 255);
+  --color-border-strong: oklch(78% 0.01 255);
+
+  /* Typography */
+  --font-display: "Barlow Condensed", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, sans-serif;
+
+  /* Spacing rhythm */
+  --page-max:   1100px;
+  --page-pad:   clamp(1rem, 4vw, 2.5rem);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-base);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Confidence bar utility */
+.confidence-bar {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--color-accent);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Premium badge */
+.badge-premium {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-premium);
+  background: var(--color-premium-bg);
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Prediction pill */
+.badge-prediction {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+}
+
+/* Nav links */
+.nav-link {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text-on-dark-2);
+  text-decoration: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-link:hover {
+  color: var(--color-text-on-dark);
+  background: oklch(22% 0.016 255);
+}
+
+/* Form inputs */
+.form-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: oklch(100% 0 0);
+  border: 1.5px solid var(--color-border);
+  border-radius: 7px;
+  font-size: 0.88rem;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-input:focus {
+  border-color: var(--color-accent);
+}
+
+/* Buttons */
+.btn-primary {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--color-accent);
+  color: oklch(97% 0.005 255);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.15s;
+}
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.btn-ghost {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-on-dark-2);
+  background: oklch(22% 0.016 255);
+  border: 1px solid oklch(28% 0.016 255);
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.15s;
+}
+.btn-ghost:hover {
+  background: oklch(26% 0.016 255);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --page-pad: 1rem;
+  }
+
+  /* Navbar email kıs */
+  .nav-email {
+    display: none;
+  }
+
+  /* Metrik grid tek sütuna düş */
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Kupon row — oran alta taşı */
+  .coupon-row {
+    grid-template-columns: 1fr !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (max-width: 400px) {
+  .nav-link span { display: none; }
+}
+
+/* Yatay scroll scrollbar gizle */
+[style*="overflowX: auto"]::-webkit-scrollbar,
+[style*="overflow-x: auto"]::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
