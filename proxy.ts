@@ -45,7 +45,8 @@ export async function proxy(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request })
 
-  const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
+  // eslint-disable-next-line no-control-regex
+  const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').replace(/[^\x20-\x7E]/g, '').trim()
 
   const supabase = createServerClient(
     clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
