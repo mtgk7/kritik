@@ -40,7 +40,7 @@ export default async function KuponlarPage() {
 
       {/* Editör Hazır Kupon Önerileri */}
       {editor.length > 0 && (
-        <section style={{ marginBottom: '3rem' }}>
+        <section id="editor" style={{ marginBottom: '3rem' }}>
           {/* Başlık */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '0.75rem',

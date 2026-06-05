@@ -39,6 +39,7 @@ export default async function Navbar() {
             <NavLink href="/">Maçlar</NavLink>
             <NavLink href="/haberler">Haberler</NavLink>
             <NavLink href="/kuponlar">AI Hazır Kuponlar</NavLink>
+            <NavLink href="/kuponlar#editor">Editörün Tahminleri</NavLink>
             <NavLink href="/istatistikler">İstatistik</NavLink>
             {isAdmin && <NavLink href="/admin">Admin</NavLink>}
           </nav>
