@@ -19,20 +19,25 @@ export default async function Navbar() {
             style={{
               fontFamily: 'var(--font-display)',
               fontWeight: 700,
-              fontSize: '1.5rem',
-              letterSpacing: '0.08em',
+              fontSize: '1.25rem',
+              letterSpacing: '0.1em',
               color: 'var(--color-text-on-dark)',
               textDecoration: 'none',
               textTransform: 'uppercase',
+              border: '2px solid oklch(93% 0.005 255)',
+              borderRadius: '6px',
+              padding: '0.2rem 0.65rem',
+              lineHeight: 1.4,
             }}
           >
             Kritik
           </a>
 
           <nav style={{ display: 'flex', gap: '0.25rem' }}>
+            <NavLink href="/hizmetler">Ana Sayfa</NavLink>
             <NavLink href="/">Maçlar</NavLink>
             <NavLink href="/haberler">Haberler</NavLink>
-            <NavLink href="/kuponlar">Kuponlar</NavLink>
+            <NavLink href="/kuponlar">AI Hazır Kuponlar</NavLink>
             {isAdmin && <NavLink href="/admin">Admin</NavLink>}
           </nav>
         </div>
@@ -79,16 +84,17 @@ export default async function Navbar() {
                 href="/kayit"
                 style={{
                   fontSize: '0.8rem',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'oklch(97% 0.005 255)',
-                  background: 'var(--color-accent)',
+                  background: 'linear-gradient(135deg, oklch(55% 0.18 35) 0%, oklch(42% 0.15 20) 100%)',
                   textDecoration: 'none',
                   borderRadius: '6px',
                   padding: '0.35rem 0.85rem',
-                  transition: 'background 0.15s',
+                  letterSpacing: '0.03em',
+                  boxShadow: '0 1px 3px oklch(30% 0.1 35 / 0.4)',
                 }}
               >
-                Kayıt Ol
+                ⭐ Premium Ol
               </a>
             </>
           )}

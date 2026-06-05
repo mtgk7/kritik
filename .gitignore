@@ -46,3 +46,8 @@ __pycache__/
 *.pyo
 
 .vercel
+
+.env*
+
+# Claude Code
+.claude/

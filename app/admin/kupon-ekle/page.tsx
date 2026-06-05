@@ -68,6 +68,24 @@ export default async function KuponEklePage({
           </select>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium mb-1">Editör Seçimi mi?</label>
+          <select name="is_editor_pick" className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="false">Hayır (AI Kupon)</option>
+            <option value="true">Evet (Editör Hazır Kupon)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Editör Notu (opsiyonel)</label>
+          <textarea
+            name="editor_note"
+            rows={2}
+            placeholder="Bu kuponu neden seçtiniz? Kısa analiz notu..."
+            className="w-full border rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+
         <button
           type="submit"
           className="w-full bg-black text-white rounded-lg py-2 text-sm font-medium hover:bg-gray-800 transition"

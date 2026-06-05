@@ -3,6 +3,7 @@ SofaScore Score Watcher
 Canlı maç varken her 60 sn, yokken her 5 dakikada skor + durum günceller.
 """
 
+import sys
 import time
 import logging
 from datetime import datetime, timezone, timedelta
@@ -37,7 +38,7 @@ STATUS_MAP = {
     "cancelled":   None,
 }
 
-TR_MAP = str.maketrans("çşğüöıÇŞĞÜÖİ", "csguo iCSGUOI")
+TR_MAP = str.maketrans("çşğüöıÇŞĞÜÖİ", "csguoiCSGUOI")
 
 
 def norm(name: str) -> str:
@@ -101,33 +102,41 @@ def sync(client, idx: dict) -> int:
     return updated
 
 
+def run_once(client) -> bool:
+    """Tek sync geçişi. Canlı maç varsa True döner."""
+    now = datetime.now(timezone.utc)
+    today     = now.date().isoformat()
+    tomorrow  = (now.date() + timedelta(days=1)).isoformat()
+    yesterday = (now.date() - timedelta(days=1)).isoformat()
+
+    live_events = fetch("https://api.sofascore.com/api/v1/sport/football/events/live")
+
+    all_events = (
+        live_events
+        + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{yesterday}")
+        + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{today}")
+        + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{tomorrow}")
+    )
+
+    idx = build_index(all_events)
+    updated = sync(client, idx)
+    log.info(f"Sync tamam — {updated} güncellendi | {'CANLI' if live_events else 'bekleme'}")
+    return bool(live_events)
+
+
 def run():
+    """Sürekli döngü (Render worker için)."""
     client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    log.info("Score watcher başlatıldı")
-
+    log.info("Score watcher başlatıldı (sürekli mod)")
     while True:
-        now = datetime.now(timezone.utc)
-        today     = now.date().isoformat()
-        tomorrow  = (now.date() + timedelta(days=1)).isoformat()
-        yesterday = (now.date() - timedelta(days=1)).isoformat()
-
-        live_events = fetch("https://api.sofascore.com/api/v1/sport/football/events/live")
-
-        all_events = (
-            live_events
-            + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{yesterday}")
-            + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{today}")
-            + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{tomorrow}")
-        )
-
-        idx = build_index(all_events)
-        updated = sync(client, idx)
-
-        mode = "CANLI MOD" if live_events else "bekleme"
-        sleep = LIVE_INTERVAL if live_events else IDLE_INTERVAL
-        log.info(f"Sync tamam — {updated} güncellendi | {mode} | {sleep}s sonra tekrar")
-        time.sleep(sleep)
+        has_live = run_once(client)
+        time.sleep(LIVE_INTERVAL if has_live else IDLE_INTERVAL)
 
 
 if __name__ == "__main__":
-    run()
+    if "--once" in sys.argv:
+        # Cron modu: tek geçiş yap ve çık (GitHub Actions için)
+        client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        run_once(client)
+    else:
+        run()

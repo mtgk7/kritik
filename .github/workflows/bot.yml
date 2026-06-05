@@ -1,0 +1,40 @@
+name: Kritik Bot — Maç Analizi & Haberler
+
+# Maç analizleri, kuponlar, haftalık ücretsiz vitrin rotasyonu ve haberleri üretir.
+# Cuma-Cuma rotasyon main.py içinde otomatik yönetilir.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # Her 6 saatte bir (00:00, 06:00, 12:00, 18:00 UTC)
+  workflow_dispatch:          # Elle tetikleme (GitHub Actions sekmesinden)
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: python/requirements.txt
+
+      - name: Bağımlılıkları yükle
+        run: pip install -r requirements.txt
+
+      - name: Botu çalıştır
+        env:
+          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
+          FOOTBALL_DATA_KEY:     ${{ secrets.FOOTBALL_DATA_KEY }}
+          API_FOOTBALL_KEY:      ${{ secrets.API_FOOTBALL_KEY }}
+          PROVIDER:              ${{ vars.PROVIDER }}
+          LEAGUE_IDS:            ${{ vars.LEAGUE_IDS }}
+          FOOTBALL_DATA_LEAGUES: ${{ vars.FOOTBALL_DATA_LEAGUES }}
+        run: python main.py

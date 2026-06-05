@@ -37,8 +37,8 @@
   --font-body:    "Inter", system-ui, sans-serif;
 
   /* Spacing rhythm */
-  --page-max:   1100px;
-  --page-pad:   clamp(1rem, 4vw, 2.5rem);
+  --page-max:   1400px;
+  --page-pad:   clamp(1rem, 2.5vw, 2rem);
 }
 
 * { box-sizing: border-box; }
@@ -159,6 +159,49 @@ body {
   background: oklch(26% 0.016 255);
 }
 
+/* Ana sayfa iki sütun — dar ekranda alt alta */
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 2.5rem;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .home-sidebar {
+    display: none;  /* Mobilden sidebar gizli — /haberler ayrı sayfa */
+  }
+}
+
+/* Haber portalı düzeni */
+.news-hero {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+.news-hero-side {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 820px) {
+  .news-hero { grid-template-columns: 1fr; }
+}
+@media (max-width: 460px) {
+  .news-hero-side { grid-template-columns: 1fr; grid-template-rows: none; }
+}
+.news-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1.25rem;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   :root {
@@ -189,6 +232,34 @@ body {
 [style*="overflowX: auto"]::-webkit-scrollbar,
 [style*="overflow-x: auto"]::-webkit-scrollbar {
   display: none;
+}
+
+/* Live badge */
+.badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+}
+.badge-live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.65); }
 }
 
 @media (prefers-reduced-motion: reduce) {

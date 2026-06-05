@@ -26,8 +26,9 @@ from analyzer import (
     calc_injury_effect,
     calc_confidence,
 )
-from api_client import get_last5_fixtures
-from db_client import upsert_matches, upsert_coupons, delete_today_coupons
+from api_client import get_last5_fixtures, get_team_card_stats
+from predictor import _find_team_id, _calc_team_stats
+from db_client import upsert_matches, upsert_coupons, delete_today_coupons, get_setting, set_setting
 from models import MatchRecord, MissingPlayer, CouponRecord
 from news_fetcher import run_news_fetch
 from predictor import analyze_with_claude
@@ -130,6 +131,92 @@ def build_coupons(analyzed: list[MatchRecord]) -> list[CouponRecord]:
     return coupons
 
 
+# ── Lig Adı Haritası ─────────────────────────────────────────────────────────
+
+LEAGUE_NAME_MAP: dict[str | int, str] = {
+    # API-Football
+    203:  "Süper Lig",
+    39:   "Premier Lig",
+    140:  "La Liga",
+    78:   "Bundesliga",
+    135:  "Serie A",
+    61:   "Ligue 1",
+    2:    "Şampiyonlar Ligi",
+    3:    "Avrupa Ligi",
+    1:    "Dünya Kupası 2026",
+    # football-data.org
+    "PL":  "Premier Lig",
+    "PD":  "La Liga",
+    "BL1": "Bundesliga",
+    "SA":  "Serie A",
+    "FL1": "Ligue 1",
+    "CL":  "Şampiyonlar Ligi",
+    "EL":  "Avrupa Ligi",
+    "WC":  "Dünya Kupası 2026",
+}
+
+def get_league_name(league_ref: str | int) -> str:
+    try:
+        key = int(league_ref)
+    except (ValueError, TypeError):
+        key = str(league_ref)
+    return LEAGUE_NAME_MAP.get(key, f"Lig {league_ref}")
+
+
+# ── Son 5 Maç Özeti ──────────────────────────────────────────────────────────
+
+def _build_last5_summary(team_name: str, team_id: int, fixtures: list[dict], cards: dict) -> dict:
+    """
+    Son 5 maçtan DB'ye yazılacak yapılandırılmış özet.
+    Frontend'de form çizgisi ve detay tablosu olarak gösterilir.
+    """
+    stats   = _calc_team_stats(team_id, fixtures)
+    matches = []
+
+    for fx in fixtures:
+        home   = fx["teams"]["home"]
+        away_d = fx["teams"]["away"]
+        goals  = fx.get("goals", {})
+        h_g    = goals.get("home") or 0
+        a_g    = goals.get("away") or 0
+        is_home = home.get("id") == team_id
+        winner  = home.get("winner")
+        date    = fx.get("fixture", {}).get("date", "")[:10]
+
+        if winner is None:
+            result = "B"
+        elif (winner and is_home) or (not winner and not is_home):
+            result = "G"
+        else:
+            result = "M"
+
+        opponent = away_d.get("name", "?") if is_home else home.get("name", "?")
+        team_score     = h_g if is_home else a_g
+        opponent_score = a_g if is_home else h_g
+
+        matches.append({
+            "result":         result,
+            "opponent":       opponent,
+            "team_score":     team_score,
+            "opponent_score": opponent_score,
+            "was_home":       is_home,
+            "date":           date,
+        })
+
+    return {
+        "team":          team_name,
+        "played":        stats["played"],
+        "wins":          stats["wins"],
+        "draws":         stats["draws"],
+        "losses":        stats["losses"],
+        "goals_for":     stats["goals_for"],
+        "goals_against": stats["goals_against"],
+        "yellow_cards":  cards.get("yellow_cards", 0),
+        "red_cards":     cards.get("red_cards", 0),
+        "matches":       matches,
+    }
+
+
 # ── Ana görev ─────────────────────────────────────────────────────────────────
 
 def run():
@@ -188,10 +275,19 @@ def run():
                 home_last5 = get_last5_fixtures(home_id, league_ref, season)
                 away_last5 = get_last5_fixtures(away_id, league_ref, season)
 
+                # Kart istatistikleri (api_football cache kullanır — ek API çağrısı minimal)
+                home_cards = get_team_card_stats(home_id, league_ref, season)
+                away_cards = get_team_card_stats(away_id, league_ref, season)
+
+                # Son 5 maç özet verisi (DB'ye yazılır, frontend'de gösterilir)
+                home_last5_data = _build_last5_summary(home_name, home_id, home_last5, home_cards)
+                away_last5_data = _build_last5_summary(away_name, away_id, away_last5, away_cards)
+
                 # Claude AI analizi (API key yoksa kural tabanlı)
                 ai_result = analyze_with_claude(
                     home_name, away_name,
                     home_last5, away_last5,
+                    home_cards, away_cards,
                     home_form, away_form,
                     home_xg_raw, away_xg_raw,
                     home_inj, away_inj,
@@ -207,6 +303,7 @@ def run():
                     home_team=home_name,
                     away_team=away_name,
                     match_time=match_time,
+                    league_name=get_league_name(league_ref),
                     home_xg=home_xg_raw,
                     away_xg=away_xg_raw,
                     home_form_score=home_form,
@@ -218,6 +315,8 @@ def run():
                     analysis=ai_result.get("analysis"),
                     alternatives=ai_result.get("alternatives", []),
                     missing_players=all_missing,
+                    home_last5_data=home_last5_data,
+                    away_last5_data=away_last5_data,
                 )
 
                 analyzed_all.append(match_record)
@@ -233,6 +332,36 @@ def run():
 
             # API rate-limit koruması
             time.sleep(0.4)
+
+    # Ücretsiz vitrin maçları — CUMA'dan CUMA'ya rotasyon (her Cuma değişir)
+    if analyzed_all:
+        import random
+        from datetime import datetime, timezone, timedelta
+
+        # İçinde bulunduğumuz Cuma-haftasının başlangıç Cuma'sı (anahtar olarak)
+        now = datetime.now(timezone.utc)
+        days_since_friday = (now.weekday() - 4) % 7  # Cuma=4
+        current_week = (now - timedelta(days=days_since_friday)).date().isoformat()
+
+        setting = get_setting("free_preview") or {}
+        stored_week = setting.get("week")
+        stored_ids  = setting.get("match_ids") or []
+
+        valid_ids = {m.id for m in analyzed_all}
+
+        if stored_week != current_week or not any(i in valid_ids for i in stored_ids):
+            # Yeni hafta (veya kayıtlı maçlar artık yok) → yeniden seç
+            chosen = random.sample(analyzed_all, min(4, len(analyzed_all)))
+            stored_ids = [m.id for m in chosen]
+            set_setting("free_preview", {"week": current_week, "match_ids": stored_ids})
+            log.info(f"Ücretsiz vitrin YENİLENDİ ({current_week}): {len(stored_ids)} maç")
+        else:
+            log.info(f"Ücretsiz vitrin korunuyor ({current_week}): {len(stored_ids)} maç")
+
+        # Her çalıştırmada uygula (upsert reset'ini önlemek için)
+        free_set = set(stored_ids)
+        for m in analyzed_all:
+            m.is_free_preview = m.id in free_set
 
     # DB'ye yaz
     if analyzed_all:

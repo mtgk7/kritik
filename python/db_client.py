@@ -66,6 +66,24 @@ def upsert_coupons(coupons: list[CouponRecord]) -> int:
     return count
 
 
+def get_setting(key: str) -> dict | None:
+    """app_settings tablosundan bir ayarı okur."""
+    client = _get_client()
+    res = client.table("app_settings").select("value").eq("key", key).limit(1).execute()
+    if res.data:
+        return res.data[0].get("value")
+    return None
+
+
+def set_setting(key: str, value: dict) -> None:
+    """app_settings tablosuna bir ayar yazar (upsert)."""
+    client = _get_client()
+    client.table("app_settings").upsert(
+        {"key": key, "value": value}, on_conflict="key"
+    ).execute()
+    log.info(f"app_settings güncellendi: {key}")
+
+
 def delete_today_coupons() -> None:
     """
     Her çalıştırmada bugünün botun ürettiği kuponlarını siler,

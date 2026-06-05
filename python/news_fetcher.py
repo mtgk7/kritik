@@ -17,6 +17,7 @@ Her çalıştırmada:
   5. Supabase news tablosuna yazar
 """
 
+import os
 import logging
 import hashlib
 import time
@@ -31,30 +32,90 @@ log = logging.getLogger("kritik-bot.news")
 
 # ── Çeviri ────────────────────────────────────────────────────────────────────
 
+def _claude_client():
+    """Anthropic istemcisini lazy başlatır."""
+    import anthropic
+    return anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+
+
 def translate_to_turkish(text: str) -> str:
     """
-    İngilizce metni Türkçeye çevirir.
-    Google Translate (ücretsiz, API key gerektirmez).
+    İngilizce metni Claude Haiku ile Türkçeye çevirir.
+    Takım adları, oyuncu isimleri, ülke/şehir adları olduğu gibi korunur.
     Hata durumunda orijinal metni döner.
     """
     if not text or len(text.strip()) < 5:
         return text
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return text
+
     try:
-        from deep_translator import GoogleTranslator
-        translated = GoogleTranslator(source='en', target='tr').translate(text[:5000])
-        return translated or text
+        client = _claude_client()
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=400,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Aşağıdaki İngilizce spor haberini Türkçeye çevir.\n"
+                    "KURALLAR:\n"
+                    "- Takım adlarını (Manchester City, Real Madrid vb.) olduğu gibi bırak.\n"
+                    "- Oyuncu ve antrenör isimlerini olduğu gibi bırak.\n"
+                    "- Ülke ve şehir adlarını doğru çevir (USA → ABD, England → İngiltere).\n"
+                    "- Lig adlarını olduğu gibi bırak (Premier League, La Liga vb.).\n"
+                    "- Sadece çeviriyi yaz, açıklama ekleme.\n\n"
+                    f"{text[:1000]}"
+                ),
+            }],
+        )
+        return msg.content[0].text.strip() or text
     except Exception as e:
-        log.debug(f"Çeviri hatası: {e}")
+        log.debug(f"Çeviri hatası (Claude): {e}")
         return text
 
 
 def translate_item(title: str, summary: str) -> tuple[str, str]:
-    """Başlık ve özeti çevirir, aralarında 0.5s bekler (rate limit)."""
-    tr_title   = translate_to_turkish(title)
-    time.sleep(0.5)
-    tr_summary = translate_to_turkish(summary)
-    time.sleep(0.5)
-    return tr_title, tr_summary
+    """Başlık ve özeti tek Claude çağrısıyla birlikte çevirir."""
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return title, summary
+
+    try:
+        client = _claude_client()
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=600,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Aşağıdaki İngilizce spor haberi başlığını ve özetini Türkçeye çevir.\n"
+                    "KURALLAR:\n"
+                    "- Takım adlarını (Manchester City, Real Madrid vb.) olduğu gibi bırak.\n"
+                    "- Oyuncu ve antrenör isimlerini olduğu gibi bırak.\n"
+                    "- Ülke ve şehir adlarını doğru çevir (USA → ABD, England → İngiltere).\n"
+                    "- Lig adlarını olduğu gibi bırak (Premier League, La Liga vb.).\n"
+                    "- Yanıtı SADECE şu formatta ver (başka hiçbir şey yazma):\n"
+                    "BAŞLIK: [çevrilmiş başlık]\n"
+                    "ÖZET: [çevrilmiş özet]\n\n"
+                    f"BAŞLIK: {title}\n"
+                    f"ÖZET: {summary}"
+                ),
+            }],
+        )
+        raw = msg.content[0].text.strip()
+        tr_title   = title
+        tr_summary = summary
+        for line in raw.splitlines():
+            if line.startswith("BAŞLIK:"):
+                tr_title = line[len("BAŞLIK:"):].strip() or title
+            elif line.startswith("ÖZET:"):
+                tr_summary = line[len("ÖZET:"):].strip() or summary
+        return tr_title, tr_summary
+    except Exception as e:
+        log.debug(f"Çeviri hatası (Claude): {e}")
+        return title, summary
 
 # ── RSS kaynakları ─────────────────────────────────────────────────────────────
 
@@ -189,6 +250,17 @@ def fetch_news() -> list[dict]:
             # Özet temizle (HTML taglarını kaldır)
             clean_summary = _strip_html(summary)[:300] if summary else title
 
+            # Tam içerik — RSS'te varsa al (genellikle content[0].value)
+            raw_content = ""
+            if entry.get("content"):
+                raw_content = entry["content"][0].get("value", "") or ""
+            if not raw_content:
+                raw_content = summary or ""
+            clean_content = _strip_html(raw_content)[:3000] if raw_content else ""
+
+            # Kaynak URL
+            source_url = entry.get("link") or entry.get("url") or None
+
             # Fotoğraf çek
             image_url = _extract_image(entry, summary)
 
@@ -200,7 +272,11 @@ def fetch_news() -> list[dict]:
             results.append({
                 "title":        title[:200],
                 "summary":      clean_summary,
+                "content":      clean_content or None,
+                "source_url":   source_url,
                 "category":     category,
+                "sport":        _detect_sport(title, clean_summary),
+                "topic":        _detect_basketball_topic(title, clean_summary) if _detect_sport(title, clean_summary) == "Basketbol" else _detect_topic(title, clean_summary),
                 "tag":          tag,
                 "published_at": pub_date.isoformat(),
                 "is_published": True,
@@ -241,6 +317,69 @@ def _extract_image(entry: dict, summary: str) -> str | None:
                 return url
 
     return None
+
+
+_SPORTS: list[tuple[str, list[str]]] = [
+    ("Basketbol", [
+        "basketbol", "basketball", "nba", "euroleague", "euro league",
+        "beko", "anadolu efes", "panathinaikos", "olimpia", "baskonia",
+        "bsl", "basketlig", "potaya", "ribaunt",
+    ]),
+    ("Diğer Sporlar", [
+        "tenis", "tennis", "wimbledon", "roland garros", "us open", "atp", "wta",
+        "formula 1", "formula1", "f1", "ferrari", "verstappen", "hamilton",
+        "voleybol", "volleyball", "hentbol", "atletizm", "yüzme", "boks",
+        "güreş", "judo", "taekwondo", "olimpiyat", "olympic", "motogp",
+    ]),
+]
+
+_BASKETBALL_TOPICS: list[tuple[str, list[str]]] = [
+    ("NBA",        ["nba", "los angeles", "boston celtics", "golden state", "miami heat", "new york knicks"]),
+    ("EuroLeague", ["euroleague", "euro league", "beko", "anadolu efes", "panathinaikos", "olimpia", "baskonia"]),
+    ("BSL",        ["bsl", "basketlig", "türkiye basketbol", "galatasaray nk", "fenerbahçe beko", "efes", "pınar"]),
+]
+
+def _detect_sport(title: str, summary: str) -> str:
+    text = (title + " " + summary).lower()
+    for sport, keywords in _SPORTS:
+        if any(kw in text for kw in keywords):
+            return sport
+    return "Futbol"
+
+def _detect_basketball_topic(title: str, summary: str) -> str:
+    text = (title + " " + summary).lower()
+    for topic, keywords in _BASKETBALL_TOPICS:
+        if any(kw in text for kw in keywords):
+            return topic
+    return "Genel"
+
+
+_TOPICS: list[tuple[str, list[str]]] = [
+    ("Dünya Kupası",      ["dünya kupas", "world cup", "fifa world", "copa mundial", "2026 kupa"]),
+    ("Şampiyonlar Ligi",  ["şampiyonlar ligi", "champions league", "ucl", "uefa champions"]),
+    ("Süper Lig",         ["galatasaray", "fenerbahçe", "fenerbahce", "beşiktaş", "besiktas",
+                           "trabzonspor", "başakşehir", "basaksehir", "süper lig", "super lig",
+                           "kayserispor", "sivasspor", "antalyaspor", "konyaspor", "alanyaspor",
+                           "rizespor", "kasımpaşa", "samsunspor", "pendikspor", "hatayspor"]),
+    ("Premier Lig",       ["premier league", "premier lig", "man city", "man utd", "manchester",
+                           "arsenal", "liverpool", "chelsea", "tottenham", "newcastle",
+                           "aston villa", "west ham", "brighton", "everton"]),
+    ("La Liga",           ["la liga", "laliga", "real madrid", "barcelona", "atletico",
+                           "sevilla", "valencia", "villarreal", "athletic bilbao"]),
+    ("Bundesliga",        ["bundesliga", "bayern", "dortmund", "bvb", "leverkusen",
+                           "leipzig", "frankfurt", "stuttgard", "wolfsburg"]),
+    ("Serie A",           ["serie a", "juventus", "inter milan", "ac milan", "napoli",
+                           "roma", "lazio", "atalanta", "fiorentina"]),
+    ("Transfer",          ["transfer", "bonservis", "imzala", "sözleşme", "sozlesme",
+                           "signing", "signed", "deal", "move to", "joined", "ayrıldı"]),
+]
+
+def _detect_topic(title: str, summary: str) -> str:
+    text = (title + " " + summary).lower()
+    for topic, keywords in _TOPICS:
+        if any(kw in text for kw in keywords):
+            return topic
+    return "Genel"
 
 
 def _strip_html(text: str) -> str:

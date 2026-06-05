@@ -11,3 +11,25 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
+
+  - type: cron
+    name: kritik-data-bot
+    runtime: python
+    rootDir: python
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 * * * *"
+    startCommand: python main.py
+    plan: free
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: API_FOOTBALL_KEY
+        sync: false
+      - key: FOOTBALL_DATA_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PROVIDER
+        sync: false

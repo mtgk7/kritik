@@ -36,6 +36,7 @@ export async function addMatch(formData: FormData) {
     home_team: formData.get('home_team'),
     away_team: formData.get('away_team'),
     match_time: formData.get('match_time'),
+    league_name: formData.get('league_name') || 'Genel',
     status: formData.get('status') || 'yakında',
     home_score: formData.get('home_score') !== '' ? Number(formData.get('home_score')) : null,
     away_score: formData.get('away_score') !== '' ? Number(formData.get('away_score')) : null,
@@ -46,6 +47,9 @@ export async function addMatch(formData: FormData) {
     critical_missing_effect: formData.get('critical_missing_effect') ? Number(formData.get('critical_missing_effect')) : null,
     confidence_score: formData.get('confidence_score') ? Number(formData.get('confidence_score')) : null,
     prediction: formData.get('prediction') || null,
+    prediction_confidence: formData.get('prediction_confidence') ? Number(formData.get('prediction_confidence')) : null,
+    analysis: formData.get('analysis') || null,
+    is_free_preview: formData.get('is_free_preview') === 'true',
     missing_players,
   })
 
@@ -65,10 +69,12 @@ export async function addCoupon(formData: FormData) {
     .filter(Boolean)
 
   const { error } = await supabase.from('coupons').insert({
-    coupon_type: formData.get('coupon_type'),
-    matches: matchIds,
-    total_rate: formData.get('total_rate') ? Number(formData.get('total_rate')) : null,
-    is_premium: formData.get('is_premium') === 'true',
+    coupon_type:    formData.get('coupon_type'),
+    matches:        matchIds,
+    total_rate:     formData.get('total_rate') ? Number(formData.get('total_rate')) : null,
+    is_premium:     formData.get('is_premium') === 'true',
+    is_editor_pick: formData.get('is_editor_pick') === 'true',
+    editor_note:    (formData.get('editor_note') as string)?.trim() || null,
   })
 
   if (error) {
@@ -76,4 +82,25 @@ export async function addCoupon(formData: FormData) {
   }
 
   return redirect('/admin?mesaj=Kupon eklendi')
+}
+
+export async function deleteMatch(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('id') as string
+  await supabase.from('matches').delete().eq('id', id)
+  return redirect('/admin?mesaj=Maç silindi')
+}
+
+export async function deleteNews(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('id') as string
+  await supabase.from('news').delete().eq('id', id)
+  return redirect('/admin?mesaj=Haber silindi')
+}
+
+export async function deleteCoupon(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('id') as string
+  await supabase.from('coupons').delete().eq('id', id)
+  return redirect('/admin?mesaj=Kupon silindi')
 }

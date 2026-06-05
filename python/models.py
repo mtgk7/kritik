@@ -31,6 +31,10 @@ class MatchRecord(BaseModel):
     analysis: Optional[str] = None   # Claude AI Türkçe analiz metni
     alternatives: List[dict] = []    # [{"prediction":"X","confidence":25}, ...]
     missing_players: List[MissingPlayer] = []
+    home_last5_data: Optional[dict] = None  # Son 5 maç özeti — ev sahibi
+    away_last5_data: Optional[dict] = None  # Son 5 maç özeti — deplasman
+    league_name: str = "Genel"              # Turnuva / Lig adı
+    is_free_preview: bool = False           # Ücretsiz vitrin maçı mı?
 
     @field_validator("home_xg", "away_xg", mode="before")
     @classmethod
@@ -72,7 +76,11 @@ class MatchRecord(BaseModel):
             "prediction_confidence":   self.prediction_confidence,
             "analysis":                self.analysis,
             "alternatives":            self.alternatives,
-            "missing_players": [p.model_dump(exclude={"position"}) for p in self.missing_players],
+            "missing_players":  [p.model_dump(exclude={"position"}) for p in self.missing_players],
+            "home_last5_data":  self.home_last5_data,
+            "away_last5_data":  self.away_last5_data,
+            "league_name":      self.league_name,
+            "is_free_preview":  self.is_free_preview,
         }
 
 

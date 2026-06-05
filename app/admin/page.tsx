@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Match, Coupon } from '@/lib/types'
+import { deleteMatch, deleteCoupon } from '@/app/actions/admin'
 
 export default async function AdminPage({
   searchParams,
@@ -10,7 +11,7 @@ export default async function AdminPage({
   const params = await searchParams
 
   const [{ data: matches }, { data: coupons }] = await Promise.all([
-    supabase.from('matches').select('*').order('match_time', { ascending: false }).limit(10),
+    supabase.from('matches').select('*').order('match_time', { ascending: false }).limit(20),
     supabase.from('coupons').select('*').order('created_at', { ascending: false }).limit(10),
   ])
 
@@ -35,27 +36,94 @@ export default async function AdminPage({
         <AdminBtn href="/admin/kullanicilar" label="Kullanıcılar" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '2.5rem' }}>
-        <AdminTable
-          title="Son Maçlar"
-          columns={['Maç', 'Tarih', 'Güven', 'Tahmin']}
-          rows={(matches ?? []).map((m: Match) => [
-            `${m.home_team} — ${m.away_team}`,
-            new Date(m.match_time).toLocaleDateString('tr-TR'),
-            m.confidence_score != null ? `%${Math.round(m.confidence_score * 100)}` : '—',
-            m.prediction ?? '—',
-          ])}
-        />
-        <AdminTable
-          title="Son Kuponlar"
-          columns={['Tip', 'Oran', 'Premium', 'Tarih']}
-          rows={(coupons ?? []).map((c: Coupon) => [
-            c.coupon_type,
-            c.total_rate?.toFixed(2) ?? '—',
-            c.is_premium ? '✓' : '—',
-            new Date(c.created_at).toLocaleDateString('tr-TR'),
-          ])}
-        />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+
+        {/* Son Maçlar */}
+        <section>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.75rem' }}>
+            Son Maçlar
+          </h2>
+          {!matches?.length ? (
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', padding: '1rem 0', borderTop: '1px solid var(--color-border)' }}>Veri yok.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {(matches as Match[]).map((m, i) => (
+                <div key={m.id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto auto auto',
+                  gap: '1rem', padding: '0.75rem 0', alignItems: 'center',
+                  borderBottom: i === matches.length - 1 ? 'none' : '1px solid var(--color-border)',
+                }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {m.home_team} — {m.away_team}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+                    {new Date(m.match_time).toLocaleDateString('tr-TR')}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                    {m.confidence_score != null ? `%${Math.round(m.confidence_score * 100)}` : '—'}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                    {m.prediction ?? '—'}
+                  </span>
+                  <form action={deleteMatch}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <button type="submit" style={{
+                      fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-accent)',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem',
+                      fontFamily: 'var(--font-body)',
+                    }}>
+                      Sil
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Son Kuponlar */}
+        <section>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.75rem' }}>
+            Son Kuponlar
+          </h2>
+          {!coupons?.length ? (
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', padding: '1rem 0', borderTop: '1px solid var(--color-border)' }}>Veri yok.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {(coupons as Coupon[]).map((c, i) => (
+                <div key={c.id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto auto auto',
+                  gap: '1rem', padding: '0.75rem 0', alignItems: 'center',
+                  borderBottom: i === coupons.length - 1 ? 'none' : '1px solid var(--color-border)',
+                }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {c.coupon_type}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                    {c.total_rate?.toFixed(2) ?? '—'}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: c.is_premium ? 'var(--color-premium)' : 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+                    {c.is_premium ? 'Premium' : 'Ücretsiz'}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+                    {new Date(c.created_at).toLocaleDateString('tr-TR')}
+                  </span>
+                  <form action={deleteCoupon}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <button type="submit" style={{
+                      fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-accent)',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem',
+                      fontFamily: 'var(--font-body)',
+                    }}>
+                      Sil
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
       </div>
     </main>
   )
@@ -79,39 +147,5 @@ function AdminBtn({ href, label, primary }: { href: string; label: string; prima
     >
       {label}
     </a>
-  )
-}
-
-function AdminTable({ title, columns, rows }: { title: string; columns: string[]; rows: string[][] }) {
-  return (
-    <div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.75rem' }}>
-        {title}
-      </h2>
-      {rows.length === 0 ? (
-        <p style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', padding: '1rem 0', borderTop: '1px solid var(--color-border)' }}>Veri yok.</p>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                {columns.map(c => (
-                  <th key={c} style={{ textAlign: 'left', padding: '0.5rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)' }}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} style={{ borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
-                  {row.map((cell, j) => (
-                    <td key={j} style={{ padding: '0.6rem 0.75rem', color: j === 0 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>{cell}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
   )
 }

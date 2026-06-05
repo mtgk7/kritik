@@ -20,6 +20,9 @@ def _cfg():
 _SESSION = requests.Session()
 _initialized = False
 
+# Fixture başına istatistik cache — aynı fixture için birden fazla çağrıyı önler
+_FIXTURE_STATS_CACHE: dict[int, list[dict]] = {}
+
 def _ensure_session():
     global _initialized
     if not _initialized:
@@ -75,11 +78,47 @@ def get_last5_fixtures(team_id: int, league_id: int, season: int) -> list[dict]:
 
 
 def get_fixture_statistics(fixture_id: int) -> list[dict]:
+    if fixture_id in _FIXTURE_STATS_CACHE:
+        return _FIXTURE_STATS_CACHE[fixture_id]
     data = _get("fixtures/statistics", {"fixture": fixture_id})
-    return data.get("response", [])
+    result = data.get("response", [])
+    _FIXTURE_STATS_CACHE[fixture_id] = result
+    return result
+
+
+def get_last5_card_stats(team_id: int, league_id: int, season: int) -> dict:
+    """
+    Son 5 maçtan sarı kart ve kırmızı kart toplamlarını döndürür.
+    get_fixture_statistics cache'i kullanır — ek API çağrısı yapmaz.
+    """
+    fixtures = get_last5_fixtures(team_id, league_id, season)
+    yellow_total = 0
+    red_total    = 0
+    played       = 0
+
+    for fx in fixtures:
+        fixture_id = fx["fixture"]["id"]
+        for ts in get_fixture_statistics(fixture_id):
+            if ts.get("team", {}).get("id") != team_id:
+                continue
+            s = {item["type"]: item["value"] for item in ts.get("statistics", [])}
+            yellow_total += int(s.get("Yellow Cards") or 0)
+            red_total    += int(s.get("Red Cards")    or 0)
+            played       += 1
+            break
+
+    return {
+        "yellow_cards": yellow_total,
+        "red_cards":    red_total,
+        "played":       played,
+    }
 
 
 def get_injuries(team_id: int, league_id: int, season: int) -> list[dict]:
+    """
+    Sakatlık ve ceza (süspansiyon) listesi.
+    API yanıtı: player.type = 'Injury' | 'Suspension'
+    """
     data = _get("injuries", {"team": team_id, "league": league_id, "season": season})
     return data.get("response", [])
 

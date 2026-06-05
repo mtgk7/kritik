@@ -75,6 +75,18 @@ def get_injuries(team_id: int, league_ref: str | int = "", season: int | None = 
         return _gi(team_id)
 
 
+def get_team_card_stats(team_id: int, league_ref: str | int = "", season: int | None = None) -> dict:
+    """
+    Son 5 maçtan sarı/kırmızı kart toplamı.
+    football_data provider'da şut/kart istatistiği yok → sıfır döner.
+    """
+    if _PROVIDER == "api_football":
+        from providers.api_football import get_last5_card_stats, current_season
+        s = season or current_season(int(league_ref))
+        return get_last5_card_stats(team_id, int(league_ref), s)
+    return {"yellow_cards": 0, "red_cards": 0, "played": 0}
+
+
 def current_league_season(league_ref: str | int) -> int:
     if _PROVIDER == "api_football":
         from providers.api_football import current_season
