@@ -76,8 +76,10 @@ export default function MatchListClient({ matches, isPremium }: Props) {
             style={{
               width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.1rem',
               border: '1.5px solid var(--color-border)', borderRadius: '7px',
-              fontSize: '0.82rem', color: 'var(--color-text-primary)',
-              fontFamily: 'var(--font-body)', background: 'oklch(100% 0 0)',
+              fontSize: '0.82rem',
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--font-body)',
+              background: 'var(--color-base)',
               outline: 'none',
             }}
           />
