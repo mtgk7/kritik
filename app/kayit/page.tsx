@@ -23,7 +23,7 @@ export default async function KayitPage({
             Kayıt Ol
           </h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-            Ücretsiz hesap oluştur — <strong style={{ color: 'var(--color-premium)' }}>3 gün ücretsiz premium</strong> seni bekliyor.
+            Ücretsiz hesap oluştur, maç analizlerine hemen eriş.
           </p>
         </div>
 
@@ -35,7 +35,7 @@ export default async function KayitPage({
 
         {params.ref && (
           <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'var(--color-success-bg)', borderRadius: '8px', fontSize: '0.82rem', color: 'var(--color-success)', fontWeight: 500 }}>
-            🎁 Davet bağlantısıyla geldin — kayıt olunca <strong>3 gün ücretsiz premium</strong> aktif olacak!
+            🎁 Davet bağlantısıyla geldin — hoş geldin!
           </div>
         )}
 

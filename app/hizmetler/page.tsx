@@ -11,7 +11,6 @@ const FREE_FEATURES = [
   { icon: '📰', title: 'Günlük Spor Haberleri', desc: 'Her gün güncellenen kategorize haberler: Dünya Kupası, Süper Lig, Avrupa ligleri.' },
   { icon: '🤖', title: 'AI Hazır Kuponlar', desc: 'Algoritmanın ürettiği ücretsiz Banko ve xG Canavarı kombinasyon kuponları.' },
   { icon: '📱', title: 'Telefona Kurulabilir', desc: 'PWA desteği ile uygulamayı ana ekranına ekle, internet bağlantısı olmadan da açılır.' },
-  { icon: '🎁', title: '3 Gün Ücretsiz Premium', desc: 'Kayıt olduğunda tüm premium özellikler 3 gün boyunca otomatik aktif olur.' },
 ]
 
 const PREMIUM_FEATURES = [
