@@ -93,5 +93,15 @@ export type User = {
   email: string
   is_premium: boolean
   premium_until: string | null
+  notif_leagues: string[]
+  notif_min_conf: number
+  notif_telegram: boolean
+  created_at: string
+}
+
+export type Favorite = {
+  id: string
+  user_id: string
+  match_id: string
   created_at: string
 }

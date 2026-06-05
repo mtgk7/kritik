@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '@/app/actions/auth'
+import ThemeToggle from '@/components/ThemeToggle'
 
 const ADMIN_EMAIL = 'gokbukmert@gmail.com'
 
@@ -45,6 +46,7 @@ export default async function Navbar() {
 
         {/* Auth */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <ThemeToggle />
           {user ? (
             <>
               <a

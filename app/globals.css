@@ -41,6 +41,28 @@
   --page-pad:   clamp(1rem, 2.5vw, 2rem);
 }
 
+/* Dark mode */
+.dark {
+  --color-base:        oklch(12% 0.008 255);
+  --color-surface-2:   oklch(17% 0.010 255);
+  --color-header:      oklch(10% 0.010 255);
+  --color-header-2:    oklch(14% 0.012 255);
+
+  --color-text-primary:   oklch(93% 0.006 255);
+  --color-text-secondary: oklch(65% 0.010 255);
+  --color-text-tertiary:  oklch(48% 0.008 255);
+  --color-text-on-dark:   oklch(93% 0.006 255);
+  --color-text-on-dark-2: oklch(55% 0.008 255);
+
+  --color-border:        oklch(22% 0.010 255);
+  --color-border-strong: oklch(30% 0.012 255);
+
+  --color-accent-subtle: oklch(20% 0.06 25);
+  --color-success-bg:    oklch(18% 0.07 145);
+  --color-warning-bg:    oklch(18% 0.07 75);
+  --color-premium-bg:    oklch(18% 0.07 68);
+}
+
 * { box-sizing: border-box; }
 
 body {

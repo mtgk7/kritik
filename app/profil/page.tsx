@@ -1,22 +1,41 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { User } from '@/lib/types'
+import { User, Match } from '@/lib/types'
 import { signOut } from '@/app/actions/auth'
 import PremiumCheckout from '@/components/PremiumCheckout'
+import { updateNotifPrefs } from '@/app/actions/notif'
 
-export default async function ProfilPage() {
+const LEAGUES = ['Süper Lig', 'Premier Lig', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Şampiyonlar Ligi', 'Dünya Kupası 2026']
+
+export default async function ProfilPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mesaj?: string; error?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
+  const sp = await searchParams
 
   if (!authUser) redirect('/giris')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authUser.id)
-    .single()
+  const [{ data: profile }, { data: favsData }] = await Promise.all([
+    supabase.from('users').select('*').eq('id', authUser.id).single(),
+    supabase.from('favorites').select('match_id').eq('user_id', authUser.id).order('created_at', { ascending: false }),
+  ])
 
   const p = profile as User
+
+  // Favori maçları çek
+  const favMatchIds = (favsData ?? []).map((f: { match_id: string }) => f.match_id)
+  let favMatches: Match[] = []
+  if (favMatchIds.length > 0) {
+    const { data: md } = await supabase
+      .from('matches')
+      .select('id,home_team,away_team,match_time,league_name,status,confidence_score,prediction,home_score,away_score')
+      .in('id', favMatchIds)
+      .order('match_time', { ascending: true })
+    favMatches = (md ?? []) as Match[]
+  }
 
   const premiumAktif = p?.is_premium && p?.premium_until
     ? new Date(p.premium_until) > new Date()
@@ -31,6 +50,17 @@ export default async function ProfilPage() {
 
   return (
     <main style={{ maxWidth: '600px', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2.5rem', paddingBottom: '5rem' }}>
+
+      {sp?.mesaj && (
+        <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: 'var(--color-success-bg)', borderRadius: '8px', fontSize: '0.82rem', color: 'var(--color-success)', fontWeight: 500 }}>
+          ✓ {sp.mesaj}
+        </div>
+      )}
+      {sp?.error && (
+        <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: 'var(--color-accent-subtle)', borderRadius: '8px', fontSize: '0.82rem', color: 'var(--color-accent-text)' }}>
+          {sp.error}
+        </div>
+      )}
 
       {/* Başlık */}
       <div style={{ marginBottom: '2rem' }}>
@@ -146,6 +176,106 @@ export default async function ProfilPage() {
           <PremiumCheckout />
         </div>
       )}
+
+      {/* Favori Maçlar */}
+      {favMatches.length > 0 && (
+        <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '1rem' }}>
+            Kayıtlı Maçlar
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {favMatches.map((m, i) => {
+              const isFinished = m.status === 'bitti'
+              const hasScore = isFinished && m.home_score != null && m.away_score != null
+              return (
+                <a key={m.id} href={`/maclar/${m.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr auto',
+                    gap: '0.75rem', padding: '0.85rem 0', alignItems: 'center',
+                    borderBottom: i === favMatches.length - 1 ? 'none' : '1px solid var(--color-border)',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.15rem' }}>
+                        {m.home_team} — {m.away_team}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)' }}>
+                        {m.league_name} · {new Date(m.match_time).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    {hasScore ? (
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text-primary)' }}>
+                        {m.home_score}–{m.away_score}
+                      </span>
+                    ) : m.status === 'canlı' ? (
+                      <span className="badge-live">Canlı</span>
+                    ) : m.confidence_score ? (
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-success)' }}>
+                        %{Math.round(m.confidence_score * 100)}
+                      </span>
+                    ) : null}
+                  </div>
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bildirim Tercihleri */}
+      <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '1.25rem' }}>
+          Bildirim Tercihleri
+        </h2>
+        <form action={updateNotifPrefs} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Minimum güven */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.4rem' }}>
+              Minimum Güven Skoru
+            </label>
+            <select name="notif_min_conf" defaultValue={String(p?.notif_min_conf ?? 0.65)} style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', fontFamily: 'var(--font-body)', background: 'var(--color-base)', color: 'var(--color-text-primary)' }}>
+              <option value="0.55">%55+ (Orta güven)</option>
+              <option value="0.65">%65+ (İyi güven)</option>
+              <option value="0.70">%70+ (Yüksek güven)</option>
+              <option value="0.80">%80+ (Çok yüksek güven)</option>
+            </select>
+          </div>
+
+          {/* Ligler */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+              Ligler <span style={{ fontWeight: 400, color: 'var(--color-text-tertiary)' }}>(boşsa hepsi)</span>
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {LEAGUES.map(l => {
+                const active = (p?.notif_leagues ?? []).includes(l)
+                return (
+                  <label key={l} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                    <input type="checkbox" name="notif_leagues_check" value={l} defaultChecked={active} style={{ accentColor: 'var(--color-accent)' }} />
+                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>{l}</span>
+                  </label>
+                )
+              })}
+            </div>
+            <input type="hidden" name="notif_leagues" id="notif_leagues_hidden" />
+          </div>
+
+          {/* Telegram toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.1rem' }}>Telegram Bildirimleri</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>@KritikPremiumBot üzerinden</div>
+            </div>
+            <select name="notif_telegram" defaultValue={p?.notif_telegram !== false ? 'true' : 'false'} style={{ padding: '0.4rem 0.65rem', border: '1.5px solid var(--color-border)', borderRadius: '6px', fontSize: '0.82rem', fontFamily: 'var(--font-body)', background: 'var(--color-base)', color: 'var(--color-text-primary)' }}>
+              <option value="true">Açık</option>
+              <option value="false">Kapalı</option>
+            </select>
+          </div>
+
+          <button type="submit" style={{ padding: '0.65rem', background: 'var(--color-accent)', color: 'oklch(97% 0.005 255)', border: 'none', borderRadius: '8px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+            Tercihleri Kaydet
+          </button>
+        </form>
+      </div>
 
       {/* Çıkış yap */}
       <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>

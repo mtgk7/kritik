@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Match, Last5Data } from '@/lib/types'
 import LiveScoreClient from '@/components/LiveScoreClient'
+import ShareButtons from '@/components/ShareButtons'
+import { toggleFavorite } from '@/app/actions/favorites'
 
 export default async function MacDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -26,6 +28,19 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
     }
   } catch {}
   const unlocked = m.is_free_preview || isPremium
+
+  // Favori kontrolü
+  let isFavorite = false
+  try {
+    const supabase2 = await createClient()
+    const { data: { user: u2 } } = await supabase2.auth.getUser()
+    if (u2) {
+      const { data: fav } = await supabase2.from('favorites').select('id').eq('user_id', u2.id).eq('match_id', m.id).single()
+      isFavorite = !!fav
+    }
+  } catch {}
+
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
 
   const conf    = m.confidence_score ?? 0
   const confPct = Math.round(conf * 100)
@@ -62,9 +77,33 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   return (
     <main style={{ maxWidth: '760px', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2rem', paddingBottom: '5rem' }}>
 
-      <a href="/" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none', display: 'inline-block', marginBottom: '2rem' }}>
-        ← Maçlar
-      </a>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <a href="/" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
+          ← Maçlar
+        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <ShareButtons
+            title={`${m.home_team} vs ${m.away_team}`}
+            url={`${siteUrl}/maclar/${m.id}`}
+          />
+          <form action={toggleFavorite}>
+            <input type="hidden" name="match_id" value={m.id} />
+            <input type="hidden" name="action" value={isFavorite ? 'remove' : 'add'} />
+            <button type="submit" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+              padding: '0.35rem 0.75rem', borderRadius: '7px', border: '1.5px solid var(--color-border)',
+              background: isFavorite ? 'var(--color-accent-subtle)' : 'transparent',
+              color: isFavorite ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+              fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+              {isFavorite ? 'Kaydedildi' : 'Kaydet'}
+            </button>
+          </form>
+        </div>
+      </div>
 
       {/* ── Başlık ─────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: '1px solid var(--color-border)' }}>
