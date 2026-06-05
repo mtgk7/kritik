@@ -50,6 +50,17 @@ export default function RootLayout({
       className={`${inter.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" style={{ background: "var(--color-base)", color: "var(--color-text-primary)", fontFamily: "var(--font-inter), system-ui, sans-serif" }}>
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA_ID}',{page_path:window.location.pathname});`}
+            </Script>
+          </>
+        )}
         {process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID && (
           <Script
             async

@@ -96,6 +96,9 @@ export type User = {
   notif_leagues: string[]
   notif_min_conf: number
   notif_telegram: boolean
+  referral_code: string | null
+  referred_by: string | null
+  trial_used: boolean
   created_at: string
 }
 

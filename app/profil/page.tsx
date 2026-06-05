@@ -177,6 +177,30 @@ export default async function ProfilPage({
         </div>
       )}
 
+      {/* Referral Linki */}
+      {p?.referral_code && (
+        <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.4rem' }}>
+            Arkadaşını Davet Et
+          </h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
+            Davet ettiğin her kişi için <strong>+7 gün premium</strong> kazanırsın.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <code style={{ flex: 1, padding: '0.6rem 0.85rem', background: 'var(--color-base)', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.05em', minWidth: '120px' }}>
+              {p.referral_code}
+            </code>
+            <a
+              href={`https://kritik-wine.vercel.app/kayit?ref=${p.referral_code}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', textDecoration: 'none', padding: '0.55rem 1rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', whiteSpace: 'nowrap' }}
+            >
+              Linki Kopyala
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Favori Maçlar */}
       {favMatches.length > 0 && (
         <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
