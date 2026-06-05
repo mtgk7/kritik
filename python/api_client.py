@@ -49,7 +49,8 @@ def get_last5_summary(team_name: str, team_id: int = 0,
     """
     if os.getenv("SOFASCORE_LAST5", "").lower() in ("1", "true", "yes"):
         from providers.sofascore import get_last5
-        result = get_last5(team_name, team_id or None)
+        # API-Football team_id'si SofaScore'da geçersiz — isimle ara
+        result = get_last5(team_name)
         if result:
             return result
     return None  # main.py fallback: _build_last5_summary kullanır
