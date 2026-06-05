@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 import schedule
 
 from config import PROVIDER, FOOTBALL_DATA_LEAGUES, LEAGUE_IDS
-from api_client import get_fixtures, current_league_season
+from api_client import get_fixtures, current_league_season, get_last5_summary
 from analyzer import (
     calc_form_score,
     calc_raw_xg,
@@ -271,17 +271,20 @@ def run():
                     home_inj, away_inj,
                 )
 
-                # Son 5 maç verisi
-                home_last5 = get_last5_fixtures(home_id, league_ref, season, team_name=home_name)
-                away_last5 = get_last5_fixtures(away_id, league_ref, season, team_name=away_name)
+                # Son 5 maç özet verisi — SofaScore veya mevcut provider
+                home_last5_data = get_last5_summary(home_name, home_id, league_ref, season)
+                away_last5_data = get_last5_summary(away_name, away_id, league_ref, season)
 
-                # Kart istatistikleri (api_football cache kullanır — ek API çağrısı minimal)
-                home_cards = get_team_card_stats(home_id, league_ref, season)
-                away_cards = get_team_card_stats(away_id, league_ref, season)
-
-                # Son 5 maç özet verisi (DB'ye yazılır, frontend'de gösterilir)
-                home_last5_data = _build_last5_summary(home_name, home_id, home_last5, home_cards)
-                away_last5_data = _build_last5_summary(away_name, away_id, away_last5, away_cards)
+                # SofaScore bulamazsa mevcut provider'dan hesapla
+                if home_last5_data is None or away_last5_data is None:
+                    home_last5 = get_last5_fixtures(home_id, league_ref, season)
+                    away_last5 = get_last5_fixtures(away_id, league_ref, season)
+                    home_cards = get_team_card_stats(home_id, league_ref, season)
+                    away_cards = get_team_card_stats(away_id, league_ref, season)
+                    if home_last5_data is None:
+                        home_last5_data = _build_last5_summary(home_name, home_id, home_last5, home_cards)
+                    if away_last5_data is None:
+                        away_last5_data = _build_last5_summary(away_name, away_id, away_last5, away_cards)
 
                 # Claude AI analizi (API key yoksa kural tabanlı)
                 ai_result = analyze_with_claude(

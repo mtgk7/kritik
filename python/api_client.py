@@ -30,17 +30,7 @@ def get_fixtures(league_ref: str | int, season: int | None = None) -> list[dict]
 
 def get_last5_fixtures(team_id: int, league_ref: str | int = "", season: int | None = None,
                        team_name: str = "") -> list[dict]:
-    """
-    SOFASCORE_LAST5=true ise SofaScore'dan çeker (ücretsiz, tüm ligler).
-    Yoksa mevcut provider kullanılır.
-    """
-    if os.getenv("SOFASCORE_LAST5", "").lower() in ("1", "true", "yes"):
-        if team_name:
-            from providers.sofascore import get_last5
-            result = get_last5(team_name, team_id if team_id else None)
-            if result:
-                return result
-        # Fallback: mevcut provider
+    """Mevcut provider'dan son 5 maç fixture listesi döndürür."""
     if _PROVIDER == "api_football":
         from providers.api_football import get_last5_fixtures as _gf, current_season
         s = season or current_season(int(league_ref))
@@ -48,6 +38,21 @@ def get_last5_fixtures(team_id: int, league_ref: str | int = "", season: int | N
     else:
         from providers.football_data import get_last5_fixtures as _gf
         return _gf(team_id)
+
+
+def get_last5_summary(team_name: str, team_id: int = 0,
+                      league_ref: str | int = "", season: int | None = None) -> dict | None:
+    """
+    Son 5 maç özetini Last5Data formatında döndürür.
+    SOFASCORE_LAST5=true ise SofaScore (ücretsiz, tüm ligler) kullanır,
+    aksi hâlde mevcut provider'ın fixture'larından hesaplar.
+    """
+    if os.getenv("SOFASCORE_LAST5", "").lower() in ("1", "true", "yes"):
+        from providers.sofascore import get_last5
+        result = get_last5(team_name, team_id or None)
+        if result:
+            return result
+    return None  # main.py fallback: _build_last5_summary kullanır
 
 
 def get_team_goals_avg(team_id: int, league_ref: str | int = "", season: int | None = None) -> float:

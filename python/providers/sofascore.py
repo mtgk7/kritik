@@ -85,67 +85,74 @@ def find_team_id(team_name: str) -> int | None:
     return None
 
 
-def get_last5(team_name: str, team_id: int | None = None) -> list[dict]:
+def get_last5(team_name: str, team_id: int | None = None) -> dict | None:
     """
     Takımın son 5 maçını SofaScore'dan çeker.
-    Dönen format main.py'deki _build_last5_summary ile uyumlu
-    (api_football fixture dict yapısına benzer).
+    Doğrudan Last5Data formatında dict döndürür (main.py'ye hazır).
     """
     tid = team_id or find_team_id(team_name)
     if not tid:
-        return []
+        return None
 
     data = _get(f"https://api.sofascore.com/api/v1/team/{tid}/events/last/0")
     if not data:
-        return []
+        return None
 
     events = data.get("events", [])
-    # Sadece biten maçlar, son 5
     finished = [
         e for e in events
         if e.get("status", {}).get("type") in ("finished", "awarded")
     ][-5:]
 
-    result = []
+    if not finished:
+        return None
+
+    matches = []
+    wins = draws = losses = goals_for = goals_against = 0
+
     for e in finished:
         home = e.get("homeTeam", {})
         away = e.get("awayTeam", {})
-        hs   = (e.get("homeScore") or {}).get("current", 0)
-        as_  = (e.get("awayScore") or {}).get("current", 0)
+        hs   = int((e.get("homeScore") or {}).get("current") or 0)
+        as_  = int((e.get("awayScore") or {}).get("current") or 0)
         ts   = e.get("startTimestamp", 0)
 
-        # main.py'nin _build_last5_summary beklediği formata dönüştür
-        result.append({
-            "fixture": {
-                "id":   e.get("id", 0),
-                "date": _ts_to_iso(ts),
-            },
-            "teams": {
-                "home": {"id": home.get("id", 0), "name": home.get("name", ""), "winner": hs > as_},
-                "away": {"id": away.get("id", 0), "name": away.get("name", ""), "winner": as_ > hs},
-            },
-            "goals": {"home": hs, "away": as_},
-            "_sofa_team_id": tid,
+        is_home       = home.get("id") == tid
+        team_score    = hs if is_home else as_
+        opp_score     = as_ if is_home else hs
+        opponent_name = away.get("name", "?") if is_home else home.get("name", "?")
+
+        if team_score > opp_score:
+            result = "G"; wins += 1
+        elif team_score < opp_score:
+            result = "M"; losses += 1
+        else:
+            result = "B"; draws += 1
+
+        goals_for      += team_score
+        goals_against  += opp_score
+
+        matches.append({
+            "result":         result,
+            "opponent":       opponent_name,
+            "team_score":     team_score,
+            "opponent_score": opp_score,
+            "was_home":       is_home,
+            "date":           _ts_to_iso(ts)[:10] if ts else "",
         })
 
-    return result
-
-
-def get_last5_by_name(home_name: str, away_name: str) -> tuple[list[dict], list[dict]]:
-    """
-    İki takım için paralel son 5 maç çeker.
-    Ana bot'tan kolayca çağrılabilir.
-    """
-    home_id = find_team_id(home_name)
-    time.sleep(0.3)
-    away_id = find_team_id(away_name)
-    time.sleep(0.3)
-
-    home_last5 = get_last5(home_name, home_id) if home_id else []
-    time.sleep(0.3)
-    away_last5 = get_last5(away_name, away_id) if away_id else []
-
-    return home_last5, away_last5
+    return {
+        "team":          team_name,
+        "played":        len(matches),
+        "wins":          wins,
+        "draws":         draws,
+        "losses":        losses,
+        "goals_for":     goals_for,
+        "goals_against": goals_against,
+        "yellow_cards":  0,
+        "red_cards":     0,
+        "matches":       matches,
+    }
 
 
 def _ts_to_iso(ts: int) -> str:
