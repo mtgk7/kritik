@@ -2,6 +2,7 @@ import { supabaseFetch } from '@/lib/supabase/public'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Match, Last5Data } from '@/lib/types'
+import LiveScoreClient from '@/components/LiveScoreClient'
 
 export default async function MacDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -83,17 +84,15 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
           {m.away_team}
         </h1>
 
-        {/* Skor (bitti) */}
-        {hasScore && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-text-primary)' }}>
-              {m.home_score} — {m.away_score}
-            </span>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '0.2rem 0.5rem' }}>
-              Maç Bitti
-            </span>
-          </div>
-        )}
+        {/* Skor — canlı veya bitmiş (Realtime güncellenir) */}
+        <LiveScoreClient
+          matchId={m.id}
+          initialStatus={m.status}
+          initialHomeScore={m.home_score}
+          initialAwayScore={m.away_score}
+          homeTeam={m.home_team}
+          awayTeam={m.away_team}
+        />
       </div>
 
       {/* ── Premium içerik bloğu (kilitliyse blur + CTA) ─────────────────── */}
