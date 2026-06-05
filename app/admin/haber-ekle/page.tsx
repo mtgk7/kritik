@@ -29,7 +29,7 @@ export default async function HaberEklePage({
           <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.4rem', letterSpacing: '0.02em' }}>
             Kategori
           </label>
-          <select name="category" required style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', background: 'oklch(100% 0 0)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
+          <select name="category" required style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', background: 'var(--color-base)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
             <option value="gunun_haberi">Günün Haberi</option>
             <option value="haftanin_haberi">Haftanın Haberi</option>
             <option value="genel">Genel</option>
@@ -42,7 +42,7 @@ export default async function HaberEklePage({
           <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.4rem', letterSpacing: '0.02em' }}>
             Yayın Durumu
           </label>
-          <select name="is_published" style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', background: 'oklch(100% 0 0)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
+          <select name="is_published" style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', background: 'var(--color-base)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
             <option value="true">Yayınla</option>
             <option value="false">Taslak (yayınlama)</option>
           </select>
@@ -60,7 +60,7 @@ export default async function HaberEklePage({
 }
 
 function FormField({ label, name, required, multiline, placeholder }: { label: string; name: string; required?: boolean; multiline?: boolean; placeholder?: string }) {
-  const base: React.CSSProperties = { width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)', background: 'oklch(100% 0 0)', outline: 'none' }
+  const base: React.CSSProperties = { width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)', background: 'var(--color-base)', outline: 'none' }
   return (
     <div>
       <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.4rem', letterSpacing: '0.02em' }}>

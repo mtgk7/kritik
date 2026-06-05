@@ -31,7 +31,7 @@ export default async function MacDuzenlePage({
     width: '100%', padding: '0.65rem 0.85rem',
     border: '1.5px solid var(--color-border)', borderRadius: '7px',
     fontSize: '0.88rem', color: 'var(--color-text-primary)',
-    fontFamily: 'var(--font-body)', background: 'oklch(100% 0 0)',
+    fontFamily: 'var(--font-body)', background: 'var(--color-base)',
     outline: 'none', boxSizing: 'border-box',
   }
 

@@ -134,7 +134,7 @@ body {
 .form-input {
   width: 100%;
   padding: 0.65rem 0.85rem;
-  background: oklch(100% 0 0);
+  background: var(--color-base);
   border: 1.5px solid var(--color-border);
   border-radius: 7px;
   font-size: 0.88rem;

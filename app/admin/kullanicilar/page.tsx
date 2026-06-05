@@ -76,11 +76,11 @@ export default async function KullanicılarPage({
 
                 <form action={setPremium} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                   <input type="hidden" name="user_id" value={user.id} />
-                  <select name="is_premium" defaultValue={user.is_premium ? 'true' : 'false'} style={{ padding: '0.4rem 0.65rem', border: '1.5px solid var(--color-border)', borderRadius: '6px', fontSize: '0.78rem', background: 'oklch(100% 0 0)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
+                  <select name="is_premium" defaultValue={user.is_premium ? 'true' : 'false'} style={{ padding: '0.4rem 0.65rem', border: '1.5px solid var(--color-border)', borderRadius: '6px', fontSize: '0.78rem', background: 'var(--color-base)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
                     <option value="true">Premium Yap</option>
                     <option value="false">Premium Kaldır</option>
                   </select>
-                  <select name="days" style={{ padding: '0.4rem 0.65rem', border: '1.5px solid var(--color-border)', borderRadius: '6px', fontSize: '0.78rem', background: 'oklch(100% 0 0)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
+                  <select name="days" style={{ padding: '0.4rem 0.65rem', border: '1.5px solid var(--color-border)', borderRadius: '6px', fontSize: '0.78rem', background: 'var(--color-base)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
                     <option value="7">7 gün</option>
                     <option value="30">30 gün</option>
                     <option value="90">90 gün</option>
