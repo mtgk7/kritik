@@ -35,12 +35,9 @@ export default async function Navbar() {
           </a>
 
           <nav style={{ display: 'flex', gap: '0.25rem' }}>
-            <NavLink href="/hizmetler">Ana Sayfa</NavLink>
-            <NavLink href="/">Maçlar</NavLink>
             <NavLink href="/haberler">Haberler</NavLink>
             <NavLink href="/kuponlar">AI Hazır Kuponlar</NavLink>
             <NavLink href="/kuponlar#editor">Editörün Tahminleri</NavLink>
-            <NavLink href="/istatistikler">İstatistik</NavLink>
             {isAdmin && <NavLink href="/admin">Admin</NavLink>}
           </nav>
         </div>
