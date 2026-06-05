@@ -41,4 +41,5 @@ jobs:
           PROVIDER:              ${{ vars.PROVIDER }}
           LEAGUE_IDS:            ${{ vars.LEAGUE_IDS }}
           FOOTBALL_DATA_LEAGUES: ${{ vars.FOOTBALL_DATA_LEAGUES }}
+          SOFASCORE_LAST5:       ${{ vars.SOFASCORE_LAST5 }}
         run: python main.py

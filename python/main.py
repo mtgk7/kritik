@@ -272,8 +272,8 @@ def run():
                 )
 
                 # Son 5 maç verisi
-                home_last5 = get_last5_fixtures(home_id, league_ref, season)
-                away_last5 = get_last5_fixtures(away_id, league_ref, season)
+                home_last5 = get_last5_fixtures(home_id, league_ref, season, team_name=home_name)
+                away_last5 = get_last5_fixtures(away_id, league_ref, season, team_name=away_name)
 
                 # Kart istatistikleri (api_football cache kullanır — ek API çağrısı minimal)
                 home_cards = get_team_card_stats(home_id, league_ref, season)

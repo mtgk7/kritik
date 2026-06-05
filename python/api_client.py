@@ -28,7 +28,19 @@ def get_fixtures(league_ref: str | int, season: int | None = None) -> list[dict]
         return _gf(str(league_ref))
 
 
-def get_last5_fixtures(team_id: int, league_ref: str | int = "", season: int | None = None) -> list[dict]:
+def get_last5_fixtures(team_id: int, league_ref: str | int = "", season: int | None = None,
+                       team_name: str = "") -> list[dict]:
+    """
+    SOFASCORE_LAST5=true ise SofaScore'dan çeker (ücretsiz, tüm ligler).
+    Yoksa mevcut provider kullanılır.
+    """
+    if os.getenv("SOFASCORE_LAST5", "").lower() in ("1", "true", "yes"):
+        if team_name:
+            from providers.sofascore import get_last5
+            result = get_last5(team_name, team_id if team_id else None)
+            if result:
+                return result
+        # Fallback: mevcut provider
     if _PROVIDER == "api_football":
         from providers.api_football import get_last5_fixtures as _gf, current_season
         s = season or current_season(int(league_ref))
