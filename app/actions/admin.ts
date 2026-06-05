@@ -145,21 +145,29 @@ export async function triggerBot() {
   const token = raw.split('').filter(c => { const n = c.charCodeAt(0); return n >= 32 && n <= 126 }).join('').trim() || null
   const repo  = process.env.GITHUB_REPO ?? 'mtgk7/kritik'
 
-  if (!token) return redirect('/admin?error=GH_PAT eksik')
+  if (!token) return redirect('/admin?error=GH_PAT+eksik')
 
-  const res = await fetch(
-    `https://api.github.com/repos/${repo}/actions/workflows/bot.yml/dispatches`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ref: 'master' }),
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/actions/workflows/bot.yml/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ref: 'master' }),
+      }
+    )
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return redirect(`/admin?error=${encodeURIComponent(`HTTP ${res.status}: ${body.slice(0, 100)}`)}`)
     }
-  )
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return redirect(`/admin?error=${encodeURIComponent(msg)}`)
+  }
 
-  if (!res.ok) return redirect(`/admin?error=Bot tetiklenemedi (${res.status})`)
-  return redirect('/admin?mesaj=Bot tetiklendi — analiz başladı')
+  return redirect('/admin?mesaj=Bot+tetiklendi')
 }
