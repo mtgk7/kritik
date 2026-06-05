@@ -51,6 +51,8 @@ export type Match = {
   home_last5_data: Last5Data | null
   away_last5_data: Last5Data | null
   is_free_preview: boolean
+  prediction_correct: boolean | null
+  market_odds: { ms1?: number; x?: number; ms2?: number; over25?: number; under25?: number } | null
   created_at: string
 }
 

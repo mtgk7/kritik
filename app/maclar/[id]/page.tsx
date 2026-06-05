@@ -258,6 +258,16 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
               <span key={val} style={{ fontSize: '0.6rem', color: 'var(--color-text-tertiary)' }}>{lbl || val}</span>
             ))}
           </div>
+
+          {/* Oran karşılaştırması */}
+          {m.prediction && conf > 0 && !isFinished && (
+            <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
+                Algoritma Değeri
+              </div>
+              <OranKarsilastirma prediction={m.prediction} confidence={conf} marketOdds={m.market_odds} />
+            </div>
+          )}
         </section>
       )}
 
@@ -572,6 +582,71 @@ function CompareBar({
         <div style={{ width: `${leftPct}%`, background: color, borderRadius: '99px 0 0 99px', transition: 'width 0.4s ease' }} />
         <div style={{ flex: 1, background: 'var(--color-border-strong)', borderRadius: '0 99px 99px 0' }} />
       </div>
+    </div>
+  )
+}
+
+function OranKarsilastirma({
+  prediction, confidence, marketOdds,
+}: {
+  prediction: string
+  confidence: number
+  marketOdds: { ms1?: number; x?: number; ms2?: number; over25?: number; under25?: number } | null
+}) {
+  const impliedOdds = confidence > 0 ? Math.round((1 / confidence) * 100) / 100 : null
+  const predLower   = prediction.toLowerCase()
+
+  const marketOdd = marketOdds
+    ? predLower === 'ms1' ? marketOdds.ms1
+    : predLower === 'ms2' ? marketOdds.ms2
+    : predLower === 'x'   ? marketOdds.x
+    : predLower.includes('üst') ? marketOdds.over25
+    : predLower.includes('alt') ? marketOdds.under25
+    : null
+    : null
+
+  const hasValue  = marketOdd && impliedOdds && marketOdd > impliedOdds
+  const valuePct  = marketOdd && impliedOdds ? Math.round(((marketOdd / impliedOdds) - 1) * 100) : null
+
+  return (
+    <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      {/* Algoritmanın önerdiği oran */}
+      <div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
+          Algoritma İzin Verilen
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.75rem', lineHeight: 1, color: 'var(--color-text-primary)' }}>
+          {impliedOdds ? impliedOdds.toFixed(2) : '—'}
+        </div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-tertiary)', marginTop: '0.2rem' }}>
+          Beklenen oran (1/güven)
+        </div>
+      </div>
+
+      {marketOdd && (
+        <>
+          <div style={{ width: '1px', background: 'var(--color-border)', alignSelf: 'stretch' }} />
+          <div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
+              Piyasa Oranı
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.75rem', lineHeight: 1, color: hasValue ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>
+              {marketOdd.toFixed(2)}
+            </div>
+            {hasValue && valuePct !== null && (
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '0.2rem' }}>
+                +{valuePct}% değer
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {!marketOdd && (
+        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', alignSelf: 'center' }}>
+          Piyasa oranı henüz girilmedi
+        </div>
+      )}
     </div>
   )
 }

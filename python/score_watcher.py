@@ -63,10 +63,27 @@ def build_index(events: list[dict]) -> dict[str, dict]:
     return idx
 
 
+def check_prediction(prediction: str | None, home: int, away: int) -> bool | None:
+    """Tahmin doğru mu? Maç bittikten sonra hesaplanır."""
+    if not prediction:
+        return None
+    p = prediction.lower().strip()
+    if p == "ms1":        return home > away
+    if p == "ms2":        return away > home
+    if p in ("x", "beraberlik"): return home == away
+    if "2.5 üst" in p or "2.5üst" in p: return home + away > 2.5
+    if "2.5 alt" in p or "2.5alt" in p: return home + away <= 2
+    if "1.5 üst" in p or "1.5üst" in p: return home + away > 1.5
+    if "1.5 alt" in p or "1.5alt" in p: return home + away <= 1
+    if "kg var" in p:     return home > 0 and away > 0
+    if "kg yok" in p:     return home == 0 or away == 0
+    return None
+
+
 def sync(client, idx: dict) -> int:
     rows = (
         client.table("matches")
-        .select("id, home_team, away_team, status")
+        .select("id, home_team, away_team, status, prediction, prediction_correct")
         .neq("status", "bitti")
         .execute()
         .data or []
@@ -94,9 +111,19 @@ def sync(client, idx: dict) -> int:
             if as_ is not None:
                 patch["away_score"] = as_
 
+        # Maç bitti ve skor varsa tahmin doğruluğunu hesapla
+        if new_status == "bitti" and row.get("prediction_correct") is None:
+            hs = patch.get("home_score")
+            as_ = patch.get("away_score")
+            if hs is not None and as_ is not None:
+                result = check_prediction(row.get("prediction"), int(hs), int(as_))
+                if result is not None:
+                    patch["prediction_correct"] = result
+
         client.table("matches").update(patch).eq("id", row["id"]).execute()
         score_str = f"{patch.get('home_score', '?')}-{patch.get('away_score', '?')}"
-        log.info(f"  {row['home_team']} - {row['away_team']} → {new_status} {score_str}")
+        correct_str = f" {'✓' if patch.get('prediction_correct') else '✗'}" if "prediction_correct" in patch else ""
+        log.info(f"  {row['home_team']} - {row['away_team']} → {new_status} {score_str}{correct_str}")
         updated += 1
 
     return updated
