@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// eslint-disable-next-line no-control-regex
-const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').replace(/[^\x20-\x7E]/g, '').trim()
+const clean = (s: string | undefined) =>
+  (s ?? '').split('').filter(c => { const n = c.charCodeAt(0); return n >= 32 && n <= 126 }).join('').trim()
 
 export async function createClient() {
   const cookieStore = await cookies()

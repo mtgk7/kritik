@@ -141,7 +141,8 @@ export async function updateMatch(formData: FormData) {
 }
 
 export async function triggerBot() {
-  const token = (process.env.GH_PAT ?? '').replace(/^﻿/, '').replace(/[^\x20-\x7E]/g, '').trim() || null
+  const raw   = process.env.GH_PAT ?? ''
+  const token = raw.split('').filter(c => { const n = c.charCodeAt(0); return n >= 32 && n <= 126 }).join('').trim() || null
   const repo  = process.env.GITHUB_REPO ?? 'mtgk7/kritik'
 
   if (!token) return redirect('/admin?error=GH_PAT eksik')
