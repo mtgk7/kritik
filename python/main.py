@@ -373,6 +373,19 @@ def run():
         if coupons:
             written_c = upsert_coupons(coupons)
             log.info(f"Kupon oluşturuldu: {written_c} kupon")
+
+        # Bildirimler
+        try:
+            from email_notifier import notify_premium_users
+            notify_premium_users(analyzed_all)
+        except Exception as e:
+            log.warning(f"Email bildirimi başarısız: {e}")
+
+        try:
+            from telegram_bot import run as telegram_run
+            telegram_run()
+        except Exception as e:
+            log.warning(f"Telegram bildirimi başarısız: {e}")
     else:
         log.info("Yazılacak maç bulunamadı.")
 

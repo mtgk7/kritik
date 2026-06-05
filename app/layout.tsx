@@ -17,9 +17,26 @@ const barlowCondensed = Barlow_Condensed({
   display: "swap",
 });
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
+
 export const metadata: Metadata = {
   title: "Kritik — Yapay Zeka Destekli İddaa Analizi",
   description: "xG verileri ve sakatlık analizleriyle güçlendirilmiş iddaa tahminleri",
+  metadataBase: new URL(SITE_URL),
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Kritik',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'Kritik',
+    locale: 'tr_TR',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({
