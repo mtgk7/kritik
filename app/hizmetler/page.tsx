@@ -6,9 +6,12 @@ export const metadata = meta(
 )
 
 const FREE_FEATURES = [
-  { icon: '📅', title: 'Yaklaşan Maçları Gör', desc: 'Turnuvaya göre gruplanmış yaklaşan maç takvimini takip et.' },
-  { icon: '📰', title: 'Günlük Spor Haberleri', desc: 'Dünya Kupası, Süper Lig, Premier Lig ve daha fazlası — kategorize haberler.' },
-  { icon: '📱', title: 'Mobil Uyumlu', desc: 'Her cihazda sorunsuz çalışan arayüz.' },
+  { icon: '🎯', title: 'Haftada 4 Ücretsiz Analiz', desc: 'Her hafta rotasyonla değişen 4 maçın AI tahmini, güven skoru ve xG analizi tamamen ücretsiz.' },
+  { icon: '📅', title: 'Tüm Maç Takvimi', desc: 'Süper Lig, Premier Lig, Şampiyonlar Ligi ve daha fazlası — tüm yaklaşan maçları takip et.' },
+  { icon: '📰', title: 'Günlük Spor Haberleri', desc: 'Her gün güncellenen kategorize haberler: Dünya Kupası, Süper Lig, Avrupa ligleri.' },
+  { icon: '🤖', title: 'AI Hazır Kuponlar', desc: 'Algoritmanın ürettiği ücretsiz Banko ve xG Canavarı kombinasyon kuponları.' },
+  { icon: '📱', title: 'Telefona Kurulabilir', desc: 'PWA desteği ile uygulamayı ana ekranına ekle, internet bağlantısı olmadan da açılır.' },
+  { icon: '🎁', title: '3 Gün Ücretsiz Premium', desc: 'Kayıt olduğunda tüm premium özellikler 3 gün boyunca otomatik aktif olur.' },
 ]
 
 const PREMIUM_FEATURES = [
