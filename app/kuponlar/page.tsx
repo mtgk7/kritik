@@ -11,11 +11,10 @@ export default async function KuponlarPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { supabaseFetch } = await import('@/lib/supabase/public')
-  const coupons = await supabaseFetch<Coupon>('coupons?select=*&order=created_at.desc')
+  const coupons = await supabaseFetch<Coupon>('coupons?select=*&is_editor_pick=eq.false&order=created_at.desc')
 
-  const editor  = coupons.filter((c: Coupon) => c.is_editor_pick)
-  const free    = coupons.filter((c: Coupon) => !c.is_premium && !c.is_editor_pick)
-  const premium = coupons.filter((c: Coupon) => c.is_premium && !c.is_editor_pick)
+  const free    = coupons.filter((c: Coupon) => !c.is_premium)
+  const premium = coupons.filter((c: Coupon) => c.is_premium)
 
   return (
     <main style={{ maxWidth: 'var(--page-max)', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
@@ -37,38 +36,6 @@ export default async function KuponlarPage() {
           Algoritmanın ürettiği kombinasyon önerileri
         </p>
       </div>
-
-      {/* Editör Hazır Kupon Önerileri */}
-      {editor.length > 0 && (
-        <section id="editor" style={{ marginBottom: '3rem' }}>
-          {/* Başlık */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.75rem',
-            marginBottom: '1rem', paddingBottom: '0.75rem',
-            borderBottom: '2px solid var(--color-premium)',
-          }}>
-            <span style={{ fontSize: '1.1rem' }}>✍️</span>
-            <div style={{ flex: 1 }}>
-              <h2 style={{
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem',
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                color: 'var(--color-premium)', lineHeight: 1,
-              }}>
-                Editör Hazır Kupon Önerileri
-              </h2>
-              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginTop: '0.2rem' }}>
-                Editörlerimiz tarafından özenle seçilmiş kuponlar
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {editor.map((c: Coupon, i: number) => (
-              <EditorCouponRow key={c.id} coupon={c} isLast={i === editor.length - 1} locked={!user && c.is_premium} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* AI Hazır Kuponlar başlık */}
       <div style={{ marginBottom: '1.5rem' }}>
