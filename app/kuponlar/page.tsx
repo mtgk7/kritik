@@ -150,7 +150,7 @@ export default async function KuponlarPage() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Ücretsiz Kayıt Ol
+              Kayıt Ol
             </a>
           </div>
         )}

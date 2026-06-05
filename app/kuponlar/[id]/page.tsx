@@ -231,7 +231,7 @@ function PremiumGate() {
         color: 'oklch(97% 0.005 255)', background: 'var(--color-accent)',
         textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem',
       }}>
-        Ücretsiz Kayıt Ol
+        Kayıt Ol
       </a>
     </main>
   )
