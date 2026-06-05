@@ -5,6 +5,7 @@ import { meta } from '@/lib/metadata'
 import NewsSidebar from '@/components/NewsSidebar'
 import AdSlot from '@/components/AdSlot'
 import MatchListClient from '@/components/MatchListClient'
+import { CACHE } from '@/lib/supabase/public'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -12,8 +13,8 @@ export const metadata = meta('Maçlar', 'Yaklaşan maçların xG, form ve güven
 
 export default async function HomePage() {
   const [matches, latestNews] = await Promise.all([
-    supabaseFetch<Match>('matches?select=*&order=match_time.asc'),
-    supabaseFetch<News>('news?select=*&is_published=eq.true&order=published_at.desc&limit=8'),
+    supabaseFetch<Match>('matches?select=*&order=match_time.asc', CACHE.MATCHES),
+    supabaseFetch<News>('news?select=*&is_published=eq.true&order=published_at.desc&limit=8', CACHE.NEWS),
   ])
 
   let isPremium = false
