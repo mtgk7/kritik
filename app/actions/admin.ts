@@ -63,10 +63,12 @@ export async function addMatch(formData: FormData) {
 export async function addCoupon(formData: FormData) {
   const supabase = await createClient()
 
-  const matchIds = (formData.get('matches') as string)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
+  // Checkbox array (match_ids[]) veya eski textarea (matches) destekle
+  const checkboxIds = formData.getAll('match_ids') as string[]
+  const textareaVal = formData.get('matches') as string | null
+  const matchIds = checkboxIds.length > 0
+    ? checkboxIds.filter(Boolean)
+    : (textareaVal ?? '').split(',').map(s => s.trim()).filter(Boolean)
 
   const { error } = await supabase.from('coupons').insert({
     coupon_type:    formData.get('coupon_type'),
