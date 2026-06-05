@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { sendTelegram } from '@/lib/telegram'
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
@@ -60,6 +61,8 @@ export async function POST(req: Request) {
     }
 
     console.log(`Premium aktifleştirildi: ${userId} — ${days} gün`)
+    const email = session.customer_email ?? session.customer_details?.email ?? 'bilinmiyor'
+    await sendTelegram(`⭐ <b>Yeni Premium Üye</b>\n${email} — ${days} gün`)
   }
 
   return NextResponse.json({ received: true })

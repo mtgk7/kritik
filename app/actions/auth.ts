@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { sendTelegram } from '@/lib/telegram'
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient()
@@ -13,6 +14,8 @@ export async function signUp(formData: FormData) {
   if (error) {
     return redirect(`/kayit?error=${encodeURIComponent(error.message)}`)
   }
+
+  await sendTelegram(`👤 <b>Yeni Üye</b>\n${email}`)
 
   return redirect('/giris?mesaj=Kayıt başarılı, giriş yapabilirsiniz')
 }
