@@ -44,7 +44,7 @@ export async function signUp(formData: FormData) {
     await sendTelegram(`👤 <b>Yeni Üye</b>\n${email}${referredBy ? ' (referral)' : ''}`)
   }
 
-  return redirect('/giris?mesaj=Kayıt başarılı, giriş yapabilirsiniz.')
+  return redirect(`/giris?mesaj=${encodeURIComponent('Kayıt başarılı, giriş yapabilirsiniz.')}`)
 }
 
 export async function signIn(formData: FormData) {
