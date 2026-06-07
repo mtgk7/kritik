@@ -69,9 +69,9 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const homeForm = (m.home_form_score ?? 0) * 100
   const awayForm = ((m.away_form_score ?? 0)) * 100
 
-  // SofaScore arama linki (event ID olmadan da çalışır)
-  const sofaQuery = encodeURIComponent(`${m.home_team} ${m.away_team}`)
-  const sofaUrl = `https://www.sofascore.com/search#q=${sofaQuery}`
+  // SofaScore linki — Google arama üzerinden (her zaman çalışır)
+  const sofaQuery = encodeURIComponent(`sofascore ${m.home_team} ${m.away_team}`)
+  const sofaUrl = `https://www.google.com/search?q=${sofaQuery}`
 
   // Analiz paragrafları
   const analysisParagraphs = m.analysis
@@ -468,7 +468,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
               Daha Fazla İstatistik
             </p>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)' }}>
-              Canlı skor, lineup, detaylı maç istatistikleri SofaScore'da
+              Canlı skor, kadro, detaylı istatistikler — Google üzerinden SofaScore'a git
             </p>
           </div>
           <a
