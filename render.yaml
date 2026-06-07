@@ -12,6 +12,19 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
 
+  - type: worker
+    name: kritik-odds-cron
+    runtime: python
+    rootDir: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python odds_cron.py
+    plan: free
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
   - type: cron
     name: kritik-data-bot
     runtime: python

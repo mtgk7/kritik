@@ -49,20 +49,20 @@ export default function HizmetlerPage() {
       }}>
         <p style={{
           fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.15em',
-          textTransform: 'uppercase', color: 'var(--color-accent)',
+          textTransform: 'uppercase', color: 'var(--color-text-on-dark-2)',
           marginBottom: '1.25rem',
         }}>
           Yapay Zeka Destekli İddaa Analizi
         </p>
         <h1 style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,
-          fontSize: 'clamp(2.5rem, 8vw, 5.5rem)',
+          fontSize: 'clamp(2.8rem, 9vw, 6rem)',
           letterSpacing: '0.03em', textTransform: 'uppercase',
           color: 'var(--color-text-on-dark)', lineHeight: 1.0,
           marginBottom: '1.5rem',
         }}>
-          Doğru Tahmin İçin<br />
-          <span style={{ color: 'var(--color-accent)' }}>Gerçek Veri</span>
+          Tahmin değil,{' '}
+          <span style={{ color: 'var(--color-accent)' }}>analiz.</span>
         </h1>
         <p style={{
           fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',

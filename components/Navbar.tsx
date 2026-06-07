@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '@/app/actions/auth'
 import ThemeToggle from '@/components/ThemeToggle'
+import NavMobileMenu from '@/components/NavMobileMenu'
 
 const ADMIN_EMAIL = 'gokbukmert@gmail.com'
 
@@ -9,12 +10,21 @@ export default async function Navbar() {
   const { data: { user } } = await supabase.auth.getUser()
   const isAdmin = user?.email === ADMIN_EMAIL
 
-  return (
-    <header style={{ background: 'var(--color-header)', borderBottom: '1px solid oklch(22% 0.016 255)' }}>
-      <div style={{ maxWidth: 'var(--page-max)', margin: '0 auto', padding: '0 var(--page-pad)', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2rem' }}>
+  const links = [
+    { href: '/hizmetler',        label: 'Ana Sayfa' },
+    { href: '/',                  label: 'Maçlar' },
+    { href: '/haberler',         label: 'Haberler' },
+    { href: '/kuponlar',         label: 'AI Kuponlar' },
+    { href: '/editor-tahminleri', label: 'Editör' },
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+  ]
 
-        {/* Logo + Nav */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+  return (
+    <header style={{ background: 'var(--color-header)', borderBottom: '1px solid oklch(22% 0.016 255)', position: 'relative', zIndex: 50 }}>
+      <div style={{ maxWidth: 'var(--page-max)', margin: '0 auto', padding: '0 var(--page-pad)', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           <a
             href="/"
             style={{
@@ -33,19 +43,28 @@ export default async function Navbar() {
           >
             Kritik
           </a>
-
-          <nav style={{ display: 'flex', gap: '0.25rem' }}>
-            <NavLink href="/hizmetler">Ana Sayfa</NavLink>
-            <NavLink href="/">Maçlar</NavLink>
-            <NavLink href="/haberler">Haberler</NavLink>
-            <NavLink href="/kuponlar">AI Hazır Kuponlar</NavLink>
-            <NavLink href="/editor-tahminleri">Editör Tahminleri</NavLink>
-            {isAdmin && <NavLink href="/admin">Admin</NavLink>}
-          </nav>
+          <span className="nav-slogan" style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            letterSpacing: '0.06em',
+            color: 'var(--color-accent)',
+            whiteSpace: 'nowrap',
+            opacity: 0.85,
+          }}>
+            Tahmin değil, analiz.
+          </span>
         </div>
 
-        {/* Auth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Desktop nav — gizlenir ≤860px */}
+        <nav className="nav-desktop" style={{ gap: '0.25rem', flex: 1 }}>
+          {links.map(l => (
+            <NavLink key={l.href} href={l.href}>{l.label}</NavLink>
+          ))}
+        </nav>
+
+        {/* Desktop auth — gizlenir ≤860px */}
+        <div className="nav-desktop nav-auth" style={{ alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           <ThemeToggle />
           {user ? (
             <>
@@ -65,35 +84,22 @@ export default async function Navbar() {
                 {user.email}
               </a>
               <form action={signOut} style={{ margin: 0 }}>
-                <button type="submit" className="btn-ghost">
-                  Çıkış
-                </button>
+                <button type="submit" className="btn-ghost">Çıkış</button>
               </form>
             </>
           ) : (
             <>
-              <a
-                href="/giris"
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--color-text-on-dark-2)',
-                  textDecoration: 'none',
-                  padding: '0.35rem 0.5rem',
-                }}
-              >
+              <a href="/giris" style={{ fontSize: '0.8rem', color: 'var(--color-text-on-dark-2)', textDecoration: 'none', padding: '0.35rem 0.5rem' }}>
                 Giriş Yap
               </a>
               <a
                 href="/kayit"
                 style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.8rem', fontWeight: 700,
                   color: 'oklch(97% 0.005 255)',
                   background: 'linear-gradient(135deg, oklch(55% 0.18 35) 0%, oklch(42% 0.15 20) 100%)',
-                  textDecoration: 'none',
-                  borderRadius: '6px',
-                  padding: '0.35rem 0.85rem',
-                  letterSpacing: '0.03em',
+                  textDecoration: 'none', borderRadius: '6px',
+                  padding: '0.35rem 0.85rem', letterSpacing: '0.03em',
                   boxShadow: '0 1px 3px oklch(30% 0.1 35 / 0.4)',
                 }}
               >
@@ -101,6 +107,12 @@ export default async function Navbar() {
               </a>
             </>
           )}
+        </div>
+
+        {/* Mobile: theme toggle + hamburger */}
+        <div className="nav-mobile-actions" style={{ alignItems: 'center', gap: '0.25rem' }}>
+          <ThemeToggle />
+          <NavMobileMenu links={links} userEmail={user?.email ?? null} />
         </div>
       </div>
     </header>

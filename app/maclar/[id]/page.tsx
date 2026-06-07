@@ -120,7 +120,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         </div>
         <h1 style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,
-          fontSize: 'clamp(2rem, 6vw, 3.5rem)', letterSpacing: '0.03em',
+          fontSize: 'clamp(1.4rem, 5.5vw, 3.5rem)', letterSpacing: '0.03em',
           textTransform: 'uppercase', color: 'var(--color-text-primary)', lineHeight: 1.05, marginBottom: '1rem',
         }}>
           {m.home_team}
@@ -352,7 +352,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
       {(m.home_last5_data || m.away_last5_data) && (
         <section style={{ marginBottom: '2.5rem' }}>
           <SectionTitle>Son 5 Maç</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="last5-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             {m.home_last5_data && <Last5Card data={m.home_last5_data} />}
             {m.away_last5_data && <Last5Card data={m.away_last5_data} />}
           </div>
@@ -402,18 +402,16 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
               const awayWon = hm.result === 'dep'
               const color = homeWon ? 'var(--color-success)' : awayWon ? 'var(--color-accent)' : 'var(--color-warning)'
               return (
-                <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '70px 1fr auto 1fr 70px',
-                  gap: '0.5rem', padding: '0.65rem 0', alignItems: 'center',
+                <div key={i} className="h2h-row" style={{
                   borderBottom: i === Math.min(m.h2h_data!.matches.length - 1, 6) ? 'none' : '1px solid var(--color-border)',
                 }}>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>{hm.date}</div>
+                  <div className="h2h-date" style={{ fontSize: '0.68rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>{hm.date}</div>
                   <div style={{ fontSize: '0.8rem', fontWeight: homeWon ? 700 : 400, color: homeWon ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.home}</div>
                   <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color, textAlign: 'center', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
                     {hm.home_score} – {hm.away_score}
                   </div>
                   <div style={{ fontSize: '0.8rem', fontWeight: awayWon ? 700 : 400, color: awayWon ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.away}</div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--color-text-tertiary)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.tournament}</div>
+                  <div className="h2h-tournament" style={{ fontSize: '0.62rem', color: 'var(--color-text-tertiary)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.tournament}</div>
                 </div>
               )
             })}
@@ -429,8 +427,8 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
             {m.missing_players.map((p, i) => {
               const isSuspended = p.reason?.toLowerCase() === 'ceza'
               return (
-                <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '1fr auto auto auto',
+                <div key={i} className="missing-row" style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto',
                   gap: '0.75rem', padding: '0.9rem 0',
                   borderBottom: i === m.missing_players.length - 1 ? 'none' : '1px solid var(--color-border)',
                   alignItems: 'center',
@@ -443,10 +441,11 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
                     padding: '0.15rem 0.5rem', borderRadius: '4px',
                     background: isSuspended ? 'var(--color-warning-bg)' : 'var(--color-accent-subtle)',
                     color: isSuspended ? 'var(--color-warning)' : 'var(--color-accent-text)',
+                    whiteSpace: 'nowrap',
                   }}>
                     {isSuspended ? 'Cezalı' : 'Sakat'}
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+                  <span className="missing-matches-col" style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
                     {p.missed_matches_count} maçtır yok
                   </span>
                 </div>
