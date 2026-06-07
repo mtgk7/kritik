@@ -56,6 +56,8 @@ export type Match = {
   sofascore_id: number | null
   sofascore_home_id: number | null
   sofascore_away_id: number | null
+  sofascore_slug: string | null
+  sofascore_custom_id: string | null
   h2h_data: {
     matches: { date: string; home: string; away: string; home_score: number; away_score: number; result: string; tournament: string }[]
     home_wins: number

@@ -69,10 +69,9 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const homeForm = (m.home_form_score ?? 0) * 100
   const awayForm = ((m.away_form_score ?? 0)) * 100
 
-  // SofaScore direkt link (ID varsa) veya Google fallback
-  const sofaSlug = `${m.home_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${m.away_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-  const sofaUrl = m.sofascore_id
-    ? `https://www.sofascore.com/tr/mac/${sofaSlug}/${m.sofascore_id}#id:${m.sofascore_id}`
+  // SofaScore direkt link (slug+customId varsa) veya Google fallback
+  const sofaUrl = m.sofascore_slug && m.sofascore_custom_id
+    ? `https://www.sofascore.com/${m.sofascore_slug}/${m.sofascore_custom_id}#id:${m.sofascore_id}`
     : `https://www.google.com/search?q=${encodeURIComponent(`sofascore ${m.home_team} ${m.away_team}`)}`
 
   // Analiz paragrafları
