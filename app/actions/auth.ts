@@ -1,8 +1,16 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { sendTelegram } from '@/lib/telegram'
+
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export async function signUp(formData: FormData) {
   const supabase  = await createClient()
@@ -43,7 +51,8 @@ export async function signUp(formData: FormData) {
 
     await sendTelegram(`👤 <b>Yeni Üye</b>\n${email}${referredBy ? ' (referral)' : ''}`)
 
-    // Otomatik giriş — e-posta doğrulama kapalıysa çalışır
+    // E-posta doğrulamasını admin API ile atla, hemen giriş yaptır
+    await getServiceClient().auth.admin.updateUserById(userId, { email_confirm: true })
     await supabase.auth.signInWithPassword({ email, password })
   }
 
