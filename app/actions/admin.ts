@@ -21,6 +21,16 @@ export async function addNews(formData: FormData) {
   return redirect('/admin?mesaj=Haber eklendi')
 }
 
+function parseSofaId(url: string): number | null {
+  if (!url) return null
+  // https://www.sofascore.com/tr/mac/brazil-morocco/12345678 → 12345678
+  const m = url.match(/\/(\d{5,10})(?:[#?]|$)/)
+  if (m) return parseInt(m[1])
+  // Sadece sayı girilmişse
+  if (/^\d+$/.test(url.trim())) return parseInt(url.trim())
+  return null
+}
+
 export async function addMatch(formData: FormData) {
   const supabase = await createClient()
 
@@ -31,6 +41,9 @@ export async function addMatch(formData: FormData) {
   } catch {
     missing_players = []
   }
+
+  const sofascoreInput = formData.get('sofascore_url') as string
+  const sofascore_id   = parseSofaId(sofascoreInput)
 
   const { error } = await supabase.from('matches').insert({
     home_team: formData.get('home_team'),
@@ -51,6 +64,7 @@ export async function addMatch(formData: FormData) {
     analysis: formData.get('analysis') || null,
     is_free_preview: formData.get('is_free_preview') === 'true',
     missing_players,
+    ...(sofascore_id ? { sofascore_id } : {}),
   })
 
   if (error) {
@@ -115,6 +129,9 @@ export async function updateMatch(formData: FormData) {
   let missing_players = []
   try { missing_players = missingPlayersRaw ? JSON.parse(missingPlayersRaw) : [] } catch { missing_players = [] }
 
+  const sofascoreInput = formData.get('sofascore_url') as string
+  const sofascore_id   = parseSofaId(sofascoreInput)
+
   const { error } = await supabase.from('matches').update({
     home_team: formData.get('home_team'),
     away_team: formData.get('away_team'),
@@ -134,6 +151,7 @@ export async function updateMatch(formData: FormData) {
     analysis: formData.get('analysis') || null,
     is_free_preview: formData.get('is_free_preview') === 'true',
     missing_players,
+    ...(sofascore_id ? { sofascore_id } : {}),
   }).eq('id', id)
 
   if (error) return redirect(`/admin/mac-duzenle/${id}?error=${encodeURIComponent(error.message)}`)

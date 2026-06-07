@@ -69,9 +69,11 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const homeForm = (m.home_form_score ?? 0) * 100
   const awayForm = ((m.away_form_score ?? 0)) * 100
 
-  // SofaScore linki — Google arama üzerinden (her zaman çalışır)
-  const sofaQuery = encodeURIComponent(`sofascore ${m.home_team} ${m.away_team}`)
-  const sofaUrl = `https://www.google.com/search?q=${sofaQuery}`
+  // SofaScore direkt link (ID varsa) veya Google fallback
+  const sofaSlug = `${m.home_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${m.away_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+  const sofaUrl = m.sofascore_id
+    ? `https://www.sofascore.com/tr/mac/${sofaSlug}/${m.sofascore_id}#id:${m.sofascore_id}`
+    : `https://www.google.com/search?q=${encodeURIComponent(`sofascore ${m.home_team} ${m.away_team}`)}`
 
   // Analiz paragrafları
   const analysisParagraphs = m.analysis
@@ -468,7 +470,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
               Daha Fazla İstatistik
             </p>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)' }}>
-              Canlı skor, kadro, detaylı istatistikler — Google üzerinden SofaScore'a git
+              Canlı skor, kadro, detaylı istatistikler SofaScore'da
             </p>
           </div>
           <a

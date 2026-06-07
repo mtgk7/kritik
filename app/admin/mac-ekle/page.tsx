@@ -129,6 +129,11 @@ export default async function MacEklePage({
           />
         </Field>
 
+        {/* SofaScore URL */}
+        <Field label="SofaScore URL veya ID (opsiyonel)">
+          <input name="sofascore_url" type="text" placeholder="https://www.sofascore.com/tr/mac/.../12345678 veya sadece ID" style={inputStyle} />
+        </Field>
+
         {/* Ücretsiz Vitrin */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <input name="is_free_preview" type="checkbox" value="true" id="free_preview" style={{ width: '16px', height: '16px', accentColor: 'var(--color-accent)', cursor: 'pointer' }} />

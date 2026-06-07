@@ -134,6 +134,10 @@ export default async function MacDuzenlePage({
           <textarea name="missing_players" rows={3} defaultValue={m.missing_players?.length ? JSON.stringify(m.missing_players) : ''} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace', fontSize: '0.8rem' }} />
         </Field>
 
+        <Field label="SofaScore URL veya ID (opsiyonel)">
+          <input name="sofascore_url" type="text" defaultValue={m.sofascore_id ? String(m.sofascore_id) : ''} placeholder="https://www.sofascore.com/tr/mac/.../12345678 veya sadece ID" style={inputStyle} />
+        </Field>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <input name="is_free_preview" type="checkbox" value="true" id="free_preview" defaultChecked={m.is_free_preview} style={{ width: '16px', height: '16px', accentColor: 'var(--color-accent)', cursor: 'pointer' }} />
           <label htmlFor="free_preview" style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
