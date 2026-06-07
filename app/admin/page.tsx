@@ -10,11 +10,31 @@ export default async function AdminPage({
   const supabase = await createClient()
   const params = await searchParams
 
-  const [{ data: matches }, { data: coupons }, { data: news }] = await Promise.all([
+  const week = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [
+    { data: matches }, { data: coupons }, { data: news },
+    { count: toplamUye }, { count: aktifPremium }, { count: yeniUye },
+    { count: toplamMac }, { count: yaklasMac },
+    { count: dogruTahmin }, { count: toplamTahmin },
+    { count: pushAbone }, { count: bekleyenOdeme },
+  ] = await Promise.all([
     supabase.from('matches').select('*').order('match_time', { ascending: false }).limit(20),
     supabase.from('coupons').select('*').order('created_at', { ascending: false }).limit(10),
     supabase.from('news').select('*').order('created_at', { ascending: false }).limit(15),
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_premium', true).gt('premium_until', new Date().toISOString()),
+    supabase.from('users').select('*', { count: 'exact', head: true }).gt('created_at', week),
+    supabase.from('matches').select('*', { count: 'exact', head: true }),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'yakında'),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('prediction_correct', true),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).not('prediction_correct', 'is', null),
+    supabase.from('push_subscriptions').select('*', { count: 'exact', head: true }),
+    supabase.from('pending_approvals').select('*', { count: 'exact', head: true }),
   ])
+
+  const isabetOrani = toplamTahmin ? Math.round(((dogruTahmin ?? 0) / toplamTahmin) * 100) : null
+  const convRate    = toplamUye ? Math.round(((aktifPremium ?? 0) / toplamUye) * 100) : 0
 
   return (
     <main style={{ maxWidth: 'var(--page-max)', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2rem', paddingBottom: '4rem' }}>
@@ -34,6 +54,21 @@ export default async function AdminPage({
           ✗ {params.error}
         </div>
       )}
+
+      {/* Analitik kartlar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1px', background: 'var(--color-border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '2.5rem' }}>
+        <ACard label="Toplam Üye"    value={toplamUye ?? 0} />
+        <ACard label="Aktif Premium" value={aktifPremium ?? 0} color="var(--color-premium)" />
+        <ACard label="Dönüşüm"       value={`%${convRate}`} color={convRate >= 20 ? 'var(--color-success)' : 'var(--color-warning)'} />
+        <ACard label="Yeni (7 gün)"  value={yeniUye ?? 0} />
+        <ACard label="Toplam Maç"    value={toplamMac ?? 0} />
+        <ACard label="Yaklaşan"      value={yaklasMac ?? 0} />
+        <ACard label="Push Abone"    value={pushAbone ?? 0} />
+        <ACard label="Bek. Ödeme"    value={bekleyenOdeme ?? 0} color={(bekleyenOdeme ?? 0) > 0 ? 'var(--color-warning)' : undefined} />
+        {isabetOrani !== null && (
+          <ACard label="Tahmin İsabet" value={`%${isabetOrani}`} color={isabetOrani >= 60 ? 'var(--color-success)' : 'var(--color-accent)'} />
+        )}
+      </div>
 
       {/* Aksiyonlar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '3rem', alignItems: 'center' }}>
@@ -175,6 +210,19 @@ export default async function AdminPage({
 
       </div>
     </main>
+  )
+}
+
+function ACard({ label, value, color }: { label: string; value: string | number; color?: string }) {
+  return (
+    <div style={{ background: 'var(--color-base)', padding: '1rem 1.25rem' }}>
+      <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.3rem' }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.75rem', lineHeight: 1, color: color ?? 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>
+        {value}
+      </div>
+    </div>
   )
 }
 
