@@ -18,12 +18,14 @@ export default async function ProfilPage({
 
   if (!authUser) redirect('/giris')
 
-  const [{ data: profile }, { data: favsData }] = await Promise.all([
+  const [{ data: profile }, { data: favsData }, { data: pendingData }] = await Promise.all([
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('favorites').select('match_id').eq('user_id', authUser.id).order('created_at', { ascending: false }),
+    supabase.from('pending_approvals').select('days,amount_try,created_at').eq('user_id', authUser.id).maybeSingle(),
   ])
 
   const p = profile as User
+  const pendingApproval = pendingData as { days: number; amount_try: number | null; created_at: string } | null
 
   // Favori maçları çek
   const favMatchIds = (favsData ?? []).map((f: { match_id: string }) => f.match_id)
@@ -143,6 +145,27 @@ export default async function ProfilPage({
             </p>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
               Tüm premium kupona ve analizlere erişimin var.
+            </p>
+          </div>
+        </div>
+      ) : pendingApproval ? (
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          background: 'var(--color-warning-bg)',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border)',
+          marginBottom: '1.25rem',
+          display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+        }}>
+          <span style={{ fontSize: '1.25rem', lineHeight: 1.3 }}>⏳</span>
+          <div>
+            <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-warning)', marginBottom: '0.25rem' }}>
+              Ödemeniz onay bekliyor
+            </p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              {pendingApproval.days} günlük premium ödemeniz alındı
+              {pendingApproval.amount_try ? ` (₺${pendingApproval.amount_try})` : ''}.
+              Admin onayının ardından hesabınız otomatik olarak aktifleşecek.
             </p>
           </div>
         </div>
