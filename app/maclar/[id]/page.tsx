@@ -69,13 +69,9 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const homeForm = (m.home_form_score ?? 0) * 100
   const awayForm = ((m.away_form_score ?? 0)) * 100
 
-  // SofaScore linki
-  const sofaSlug = m.sofascore_id
-    ? `${m.home_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${m.away_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-    : null
-  const sofaUrl = m.sofascore_id
-    ? `https://www.sofascore.com/tr/mac/${sofaSlug}/${m.sofascore_id}#id:${m.sofascore_id}`
-    : null
+  // SofaScore arama linki (event ID olmadan da çalışır)
+  const sofaQuery = encodeURIComponent(`${m.home_team} ${m.away_team}`)
+  const sofaUrl = `https://www.sofascore.com/search#q=${sofaQuery}`
 
   // Analiz paragrafları
   const analysisParagraphs = m.analysis
@@ -465,7 +461,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* SofaScore detaylı analiz linki */}
-      {sofaUrl && (
+      {true && (
         <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.2rem' }}>

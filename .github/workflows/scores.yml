@@ -35,4 +35,5 @@ jobs:
         env:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FOOTBALL_DATA_KEY:    ${{ secrets.FOOTBALL_DATA_KEY }}
         run: python score_watcher.py --once

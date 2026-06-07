@@ -1,9 +1,7 @@
 name: Kritik — SofaScore İstatistikler
 
 on:
-  schedule:
-    - cron: '30 */3 * * *'   # Her 3 saatte bir
-  workflow_dispatch:
+  workflow_dispatch:   # Sadece manuel tetikleme (SofaScore şu an bloklu)
 
 jobs:
   fetch-stats:

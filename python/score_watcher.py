@@ -134,6 +134,77 @@ def sync(client, idx: dict) -> int:
     return updated
 
 
+def fetch_football_data_scores(client) -> int:
+    """football-data.org fallback: WC ve Avrupa ligleri için skor güncelle."""
+    import os
+    key = os.getenv("FOOTBALL_DATA_KEY", "")
+    if not key:
+        return 0
+
+    leagues = ["WC", "PL", "PD", "BL1", "SA", "FL1", "CL", "EL"]
+    updated = 0
+
+    for league in leagues:
+        try:
+            r = requests.get(
+                f"https://api.football-data.org/v4/competitions/{league}/matches",
+                headers={"X-Auth-Token": key},
+                params={"status": "IN_PLAY,FINISHED", "limit": 20},
+                timeout=10,
+            )
+            if not r.ok:
+                continue
+
+            matches = r.json().get("matches", [])
+            for m in matches:
+                ht = m.get("homeTeam", {}).get("name", "")
+                at = m.get("awayTeam", {}).get("name", "")
+                if not ht or not at:
+                    continue
+
+                score = m.get("score", {}).get("fullTime", {})
+                hs = score.get("home")
+                as_ = score.get("away")
+                status_raw = m.get("status", "")
+
+                if status_raw == "IN_PLAY":
+                    new_status = "canlı"
+                elif status_raw == "FINISHED":
+                    new_status = "bitti"
+                else:
+                    continue
+
+                if hs is None or as_ is None:
+                    continue
+
+                # DB'de eşleştir (isim normalizasyonu)
+                key_norm = f"{norm(ht)}|{norm(at)}"
+                rows = (
+                    client.table("matches")
+                    .select("id, prediction, prediction_correct, status")
+                    .neq("status", "bitti")
+                    .execute()
+                    .data or []
+                )
+
+                for row in rows:
+                    if f"{norm(row.get('home_team',''))}|{norm(row.get('away_team',''))}" != key_norm:
+                        continue
+                    patch: dict = {"status": new_status, "home_score": hs, "away_score": as_}
+                    if new_status == "bitti" and row.get("prediction_correct") is None:
+                        res = check_prediction(row.get("prediction"), hs, as_)
+                        if res is not None:
+                            patch["prediction_correct"] = res
+                    client.table("matches").update(patch).eq("id", row["id"]).execute()
+                    updated += 1
+
+            time.sleep(6)  # football-data rate limit: 10 req/dk
+        except Exception as e:
+            log.warning(f"football-data {league}: {e}")
+
+    return updated
+
+
 def run_once(client) -> bool:
     """Tek sync geçişi. Canlı maç varsa True döner."""
     now = datetime.now(timezone.utc)
@@ -152,6 +223,12 @@ def run_once(client) -> bool:
 
     idx = build_index(all_events)
     updated = sync(client, idx)
+
+    # SofaScore bloklu ise football-data fallback
+    if not all_events:
+        log.info("SofaScore bloklu — football-data.org fallback devreye giriyor")
+        updated += fetch_football_data_scores(client)
+
     log.info(f"Sync tamam — {updated} güncellendi | {'CANLI' if live_events else 'bekleme'}")
     return bool(live_events)
 
