@@ -5,7 +5,7 @@ name: Kritik — Canlı Skor Takibi
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # Her 15 dakikada bir
+    - cron: '*/5 * * * *'    # Her 5 dakikada bir
   workflow_dispatch:
 
 jobs:
