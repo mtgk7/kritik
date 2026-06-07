@@ -53,6 +53,16 @@ export type Match = {
   is_free_preview: boolean
   prediction_correct: boolean | null
   market_odds: { ms1?: number; x?: number; ms2?: number; over25?: number; under25?: number } | null
+  sofascore_id: number | null
+  sofascore_home_id: number | null
+  sofascore_away_id: number | null
+  h2h_data: {
+    matches: { date: string; home: string; away: string; home_score: number; away_score: number; result: string; tournament: string }[]
+    home_wins: number
+    draws: number
+    away_wins: number
+    total: number
+  } | null
   created_at: string
 }
 

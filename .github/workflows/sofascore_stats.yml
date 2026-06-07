@@ -1,0 +1,35 @@
+name: Kritik — SofaScore İstatistikler
+
+on:
+  schedule:
+    - cron: '30 */3 * * *'   # Her 3 saatte bir
+  workflow_dispatch:
+
+jobs:
+  fetch-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      - uses: actions/setup-python@v5
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: python/requirements.txt
+
+      - name: Bağımlılıkları yükle
+        run: pip install -r requirements.txt
+
+      - name: SofaScore istatistiklerini çek
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python sofascore_stats.py

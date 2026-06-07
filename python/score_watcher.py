@@ -83,7 +83,7 @@ def check_prediction(prediction: str | None, home: int, away: int) -> bool | Non
 def sync(client, idx: dict) -> int:
     rows = (
         client.table("matches")
-        .select("id, home_team, away_team, status, prediction, prediction_correct")
+        .select("id, home_team, away_team, status, prediction, prediction_correct, sofascore_id")
         .neq("status", "bitti")
         .execute()
         .data or []
@@ -103,6 +103,12 @@ def sync(client, idx: dict) -> int:
 
         patch: dict = {"status": new_status}
 
+        # SofaScore ID'lerini kaydet (link + H2H için)
+        if not row.get("sofascore_id"):
+            patch["sofascore_id"]      = event.get("id")
+            patch["sofascore_home_id"] = event.get("homeTeam", {}).get("id")
+            patch["sofascore_away_id"] = event.get("awayTeam", {}).get("id")
+
         if new_status in ("canlı", "bitti"):
             hs = (event.get("homeScore") or {}).get("current")
             as_ = (event.get("awayScore") or {}).get("current")
@@ -111,7 +117,6 @@ def sync(client, idx: dict) -> int:
             if as_ is not None:
                 patch["away_score"] = as_
 
-        # Maç bitti ve skor varsa tahmin doğruluğunu hesapla
         if new_status == "bitti" and row.get("prediction_correct") is None:
             hs = patch.get("home_score")
             as_ = patch.get("away_score")

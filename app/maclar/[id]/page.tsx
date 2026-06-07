@@ -69,6 +69,14 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const homeForm = (m.home_form_score ?? 0) * 100
   const awayForm = ((m.away_form_score ?? 0)) * 100
 
+  // SofaScore linki
+  const sofaSlug = m.sofascore_id
+    ? `${m.home_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${m.away_team.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+    : null
+  const sofaUrl = m.sofascore_id
+    ? `https://www.sofascore.com/tr/mac/${sofaSlug}/${m.sofascore_id}#id:${m.sofascore_id}`
+    : null
+
   // Analiz paragrafları
   const analysisParagraphs = m.analysis
     ? m.analysis.split(/\.\s+/).filter(s => s.trim().length > 10).map(s => s.trim().endsWith('.') ? s.trim() : s.trim() + '.')
@@ -369,6 +377,53 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         </div>
       </section>
 
+      {/* ── Kafa Kafaya (H2H) ──────────────────────────────────────────── */}
+      {m.h2h_data && m.h2h_data.total > 0 && (
+        <section style={{ marginBottom: '2.5rem' }}>
+          <SectionTitle>Kafa Kafaya</SectionTitle>
+
+          {/* Özet sayaç */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.5rem', marginBottom: '1.25rem', alignItems: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-success)' }}>{m.h2h_data.home_wins}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.home_team}</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-text-tertiary)' }}>{m.h2h_data.draws}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem' }}>Bera.</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-accent)' }}>{m.h2h_data.away_wins}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.away_team}</div>
+            </div>
+          </div>
+
+          {/* Son maçlar listesi */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {m.h2h_data.matches.slice(0, 7).map((hm, i) => {
+              const homeWon = hm.result === 'ev'
+              const awayWon = hm.result === 'dep'
+              const color = homeWon ? 'var(--color-success)' : awayWon ? 'var(--color-accent)' : 'var(--color-warning)'
+              return (
+                <div key={i} style={{
+                  display: 'grid', gridTemplateColumns: '70px 1fr auto 1fr 70px',
+                  gap: '0.5rem', padding: '0.65rem 0', alignItems: 'center',
+                  borderBottom: i === Math.min(m.h2h_data!.matches.length - 1, 6) ? 'none' : '1px solid var(--color-border)',
+                }}>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>{hm.date}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: homeWon ? 700 : 400, color: homeWon ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.home}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color, textAlign: 'center', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                    {hm.home_score} – {hm.away_score}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: awayWon ? 700 : 400, color: awayWon ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.away}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--color-text-tertiary)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hm.tournament}</div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* ── Eksik Oyuncular ─────────────────────────────────────────────── */}
       {m.missing_players?.length > 0 && (
         <section style={{ marginBottom: '2.5rem' }}>
@@ -408,6 +463,39 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         {/* Kilit overlay */}
         {!unlocked && <PremiumGate />}
       </div>
+
+      {/* SofaScore detaylı analiz linki */}
+      {sofaUrl && (
+        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.2rem' }}>
+              Daha Fazla İstatistik
+            </p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)' }}>
+              Canlı skor, lineup, detaylı maç istatistikleri SofaScore'da
+            </p>
+          </div>
+          <a
+            href={sofaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.6rem 1.25rem', borderRadius: '8px',
+              border: '1.5px solid var(--color-border)',
+              fontSize: '0.85rem', fontWeight: 600,
+              color: 'var(--color-text-primary)', textDecoration: 'none',
+              background: 'var(--color-surface-2)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+            SofaScore'da Gör →
+          </a>
+        </div>
+      )}
 
     </main>
   )
