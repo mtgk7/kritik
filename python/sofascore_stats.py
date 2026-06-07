@@ -156,14 +156,69 @@ def fetch_last5_by_team_id(team_id: int, team_name: str) -> dict | None:
     }
 
 
+TR_MAP = str.maketrans("çşğüöıÇŞĞÜÖİ", "csguoiCSGUOI")
+
+def norm(name: str) -> str:
+    return name.lower().translate(TR_MAP).strip()
+
+
+def collect_event_ids(client) -> int:
+    """Önümüzdeki 14 gün için SofaScore event ID'lerini toplar."""
+    now = datetime.now(timezone.utc)
+    # Tüm id'siz yaklaşan maçları çek
+    rows = (
+        client.table("matches")
+        .select("id, home_team, away_team, match_time")
+        .is_("sofascore_id", "null")
+        .gte("match_time", now.isoformat())
+        .lte("match_time", (now + timedelta(days=14)).isoformat())
+        .execute()
+        .data or []
+    )
+
+    if not rows:
+        return 0
+
+    # 14 günlük tüm SofaScore scheduled events'i çek
+    idx: dict[str, dict] = {}
+    for d in range(-1, 15):
+        date_str = (now + timedelta(days=d)).date().isoformat()
+        data = _get(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{date_str}")
+        if data:
+            for e in data.get("events", []):
+                ht = e.get("homeTeam", {}).get("name", "")
+                at = e.get("awayTeam", {}).get("name", "")
+                key = f"{norm(ht)}|{norm(at)}"
+                idx[key] = e
+        time.sleep(0.3)
+
+    saved = 0
+    for row in rows:
+        key = f"{norm(row['home_team'])}|{norm(row['away_team'])}"
+        event = idx.get(key)
+        if event:
+            client.table("matches").update({
+                "sofascore_id":      event.get("id"),
+                "sofascore_home_id": event.get("homeTeam", {}).get("id"),
+                "sofascore_away_id": event.get("awayTeam", {}).get("id"),
+            }).eq("id", row["id"]).execute()
+            log.info(f"  ID kaydedildi: {row['home_team']} vs {row['away_team']} → {event.get('id')}")
+            saved += 1
+
+    return saved
+
+
 def run():
     client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+    # Önce eksik event ID'lerini topla
+    saved = collect_event_ids(client)
+    log.info(f"Event ID kaydedildi: {saved} maç")
+
     # sofascore_id'si olan ama h2h_data'sı olmayan yaklaşan maçlar
-    now = datetime.now(timezone.utc).isoformat()
     rows = (
         client.table("matches")
-        .select("id, home_team, away_team, sofascore_id, sofascore_home_id, sofascore_away_id")
+        .select("id, home_team, away_team, sofascore_id, sofascore_home_id, sofascore_away_id, home_last5_data, away_last5_data")
         .not_.is_("sofascore_id", "null")
         .is_("h2h_data", "null")
         .gte("match_time", (datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
