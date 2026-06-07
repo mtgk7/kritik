@@ -6,7 +6,7 @@ export const metadata = meta('Giriş Yap')
 export default async function GirisPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; mesaj?: string }>
+  searchParams: Promise<{ error?: string; mesaj?: string; sonra?: string }>
 }) {
   const params = await searchParams
 
@@ -44,6 +44,7 @@ export default async function GirisPage({
         )}
 
         <form action={signIn} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {params.sonra && <input type="hidden" name="sonra" value={params.sonra} />}
           <Field label="E-posta" name="email" type="email" />
           <Field label="Şifre" name="password" type="password" />
           <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem' }}>

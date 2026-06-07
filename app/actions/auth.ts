@@ -42,21 +42,25 @@ export async function signUp(formData: FormData) {
     }
 
     await sendTelegram(`👤 <b>Yeni Üye</b>\n${email}${referredBy ? ' (referral)' : ''}`)
+
+    // Otomatik giriş — e-posta doğrulama kapalıysa çalışır
+    await supabase.auth.signInWithPassword({ email, password })
   }
 
-  return redirect(`/giris?mesaj=${encodeURIComponent('Kayıt başarılı, giriş yapabilirsiniz.')}`)
+  return redirect('/odeme')
 }
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient()
   const email    = formData.get('email') as string
   const password = formData.get('password') as string
+  const sonra    = formData.get('sonra') as string | null
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) return redirect(`/giris?error=${encodeURIComponent(error.message)}`)
 
-  return redirect('/')
+  return redirect(sonra === 'odeme' ? '/odeme' : '/')
 }
 
 export async function signOut() {
