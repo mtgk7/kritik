@@ -69,6 +69,9 @@ export default function RootLayout({
             strategy="afterInteractive"
           />
         )}
+        <Script id="sw-register" strategy="afterInteractive">
+          {`if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')`}
+        </Script>
         <Navbar />
         {children}
       </body>

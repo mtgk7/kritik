@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { User, Match } from '@/lib/types'
 import { signOut } from '@/app/actions/auth'
 import PremiumCheckout from '@/components/PremiumCheckout'
+import PushSubscribeButton from '@/components/PushSubscribeButton'
 import { updateNotifPrefs } from '@/app/actions/notif'
 
 const LEAGUES = ['Süper Lig', 'Premier Lig', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Şampiyonlar Ligi', 'Dünya Kupası 2026']
@@ -273,6 +274,17 @@ export default async function ProfilPage({
         <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '1.25rem' }}>
           Bildirim Tercihleri
         </h2>
+
+        {/* Push bildirimleri */}
+        <div style={{ marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.25rem' }}>
+            Tarayıcı Bildirimleri
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
+            Yüksek güven maçları başlamadan önce bildirim al
+          </div>
+          <PushSubscribeButton />
+        </div>
         <form action={updateNotifPrefs} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Minimum güven */}
           <div>
