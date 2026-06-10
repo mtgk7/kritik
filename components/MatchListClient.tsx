@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Match } from '@/lib/types'
+import { translateTeam } from '@/lib/team-names'
 
 const LEAGUE_ORDER = [
   'Süper Lig', 'Dünya Kupası 2026', 'Şampiyonlar Ligi',
@@ -15,12 +16,13 @@ const CONF_FILTERS = [
   { label: '%70+',  min: 0.70 },
 ]
 
-type Props = { matches: Match[]; isPremium: boolean }
+type Props = { matches: Match[]; isPremium: boolean; favTeams?: string[] }
 
-export default function MatchListClient({ matches, isPremium }: Props) {
-  const [search, setSearch]   = useState('')
-  const [league, setLeague]   = useState('Tümü')
-  const [confIdx, setConfIdx] = useState(0)
+export default function MatchListClient({ matches, isPremium, favTeams = [] }: Props) {
+  const [search, setSearch]     = useState('')
+  const [league, setLeague]     = useState('Tümü')
+  const [confIdx, setConfIdx]   = useState(0)
+  const [favOnly, setFavOnly]   = useState(false)
 
   const leagues = useMemo(() => {
     const set = new Set(matches.map(m => m.league_name ?? 'Genel'))
@@ -34,10 +36,12 @@ export default function MatchListClient({ matches, isPremium }: Props) {
     return matches.filter(m => {
       if (league !== 'Tümü' && (m.league_name ?? 'Genel') !== league) return false
       if (minC > 0 && (m.confidence_score ?? 0) < minC) return false
-      if (q && !m.home_team.toLowerCase().includes(q) && !m.away_team.toLowerCase().includes(q)) return false
+      if (q && !m.home_team.toLowerCase().includes(q) && !m.away_team.toLowerCase().includes(q)
+             && !translateTeam(m.home_team).toLowerCase().includes(q) && !translateTeam(m.away_team).toLowerCase().includes(q)) return false
+      if (favOnly && favTeams.length > 0 && !favTeams.includes(m.home_team) && !favTeams.includes(m.away_team)) return false
       return true
     })
-  }, [matches, league, confIdx, search])
+  }, [matches, league, confIdx, search, favOnly, favTeams])
 
   // Status sırala: canlı → yakında → bitti
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
@@ -73,6 +77,7 @@ export default function MatchListClient({ matches, isPremium }: Props) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Takım ara..."
+            aria-label="Takım ara"
             style={{
               width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.1rem',
               border: '1.5px solid var(--color-border)', borderRadius: '7px',
@@ -88,7 +93,7 @@ export default function MatchListClient({ matches, isPremium }: Props) {
         {/* Güven filtresi */}
         <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--color-surface-2)', borderRadius: '8px', padding: '0.2rem' }}>
           {CONF_FILTERS.map((f, i) => (
-            <button key={f.label} onClick={() => setConfIdx(i)} style={{
+            <button key={f.label} onClick={() => setConfIdx(i)} aria-pressed={confIdx === i} style={{
               padding: '0.3rem 0.7rem', borderRadius: '6px', border: 'none',
               fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
               fontFamily: 'var(--font-body)',
@@ -102,11 +107,26 @@ export default function MatchListClient({ matches, isPremium }: Props) {
           ))}
         </div>
 
+        {/* Favori takımlar filtresi */}
+        {favTeams.length > 0 && (
+          <button onClick={() => setFavOnly(v => !v)} aria-pressed={favOnly} style={{
+            padding: '0.3rem 0.7rem', borderRadius: '6px', border: 'none',
+            fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            background: favOnly ? 'var(--color-accent)' : 'var(--color-surface-2)',
+            color: favOnly ? 'oklch(97% 0.005 255)' : 'var(--color-text-tertiary)',
+            transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: '0.3rem',
+          }}>
+            <span>♥</span> Favori Takımlarım
+          </button>
+        )}
+
         {/* Lig filtresi */}
         {leagues.length > 2 && (
           <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
             {leagues.map(l => (
-              <button key={l} onClick={() => setLeague(l)} style={{
+              <button key={l} onClick={() => setLeague(l)} aria-pressed={league === l} style={{
                 padding: '0.3rem 0.65rem', borderRadius: '6px', border: 'none',
                 fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer',
                 fontFamily: 'var(--font-body)',
@@ -120,6 +140,13 @@ export default function MatchListClient({ matches, isPremium }: Props) {
           </div>
         )}
       </div>
+
+      {/* Sonuç sayısı */}
+      {(search || league !== 'Tümü' || confIdx > 0 || favOnly) && sorted.length > 0 && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginBottom: '1rem' }}>
+          {sorted.length} maç bulundu
+        </p>
+      )}
 
       {/* Sonuç */}
       {sorted.length === 0 ? (
@@ -156,6 +183,7 @@ export default function MatchListClient({ matches, isPremium }: Props) {
                     match={match}
                     isLast={i === arr.length - 1}
                     unlocked={isPremium || match.is_free_preview}
+                    isFavTeam={favTeams.includes(match.home_team) || favTeams.includes(match.away_team)}
                   />
                 ))}
               </div>
@@ -167,7 +195,7 @@ export default function MatchListClient({ matches, isPremium }: Props) {
   )
 }
 
-function MatchRow({ match, isLast, unlocked }: { match: Match; isLast: boolean; unlocked: boolean }) {
+function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast: boolean; unlocked: boolean; isFavTeam: boolean }) {
   const conf     = match.confidence_score ?? 0
   const confPct  = Math.round(conf * 100)
   const isLive   = match.status === 'canlı'
@@ -179,12 +207,14 @@ function MatchRow({ match, isLast, unlocked }: { match: Match; isLast: boolean; 
     conf >= 0.55 ? 'var(--color-warning)'  :
     'var(--color-text-tertiary)'
 
+  const TZ = 'Europe/Istanbul'
   const matchDate = new Date(match.match_time)
-  const today     = new Date()
-  const isToday   = matchDate.toDateString() === today.toDateString()
+  const todayStr  = new Date().toLocaleDateString('tr-TR', { timeZone: TZ, day: 'numeric', month: 'numeric', year: 'numeric' })
+  const matchStr  = matchDate.toLocaleDateString('tr-TR', { timeZone: TZ, day: 'numeric', month: 'numeric', year: 'numeric' })
+  const isToday   = todayStr === matchStr
   const dateLabel = isToday
-    ? `Bugün ${matchDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
-    : matchDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    ? `Bugün ${matchDate.toLocaleTimeString('tr-TR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}`
+    : matchDate.toLocaleDateString('tr-TR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
   return (
     <a href={`/maclar/${match.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -196,13 +226,14 @@ function MatchRow({ match, isLast, unlocked }: { match: Match; isLast: boolean; 
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+            {isFavTeam && <span style={{ fontSize: '0.65rem', color: 'var(--color-accent)', lineHeight: 1 }}>♥</span>}
             {isLive && <span className="badge-live">Canlı</span>}
             <span style={{
               fontFamily: 'var(--font-display)', fontWeight: 700,
               fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', letterSpacing: '0.02em',
               textTransform: 'uppercase', color: 'var(--color-text-primary)', lineHeight: 1.1,
             }}>
-              {match.home_team}
+              {translateTeam(match.home_team)}
             </span>
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>vs</span>
             <span style={{
@@ -210,7 +241,7 @@ function MatchRow({ match, isLast, unlocked }: { match: Match; isLast: boolean; 
               fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', letterSpacing: '0.02em',
               textTransform: 'uppercase', color: 'var(--color-text-primary)', lineHeight: 1.1,
             }}>
-              {match.away_team}
+              {translateTeam(match.away_team)}
             </span>
             {!isFinished && match.prediction && (
               unlocked ? (

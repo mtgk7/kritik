@@ -4,7 +4,10 @@ import { User, Match } from '@/lib/types'
 import { signOut } from '@/app/actions/auth'
 import PremiumCheckout from '@/components/PremiumCheckout'
 import PushSubscribeButton from '@/components/PushSubscribeButton'
-import { updateNotifPrefs } from '@/app/actions/notif'
+import TelegramLinkSection from '@/components/TelegramLinkSection'
+import { updateNotifPrefs, disconnectTelegram, updateFavoriteTeams } from '@/app/actions/notif'
+import FavoriteTeamsSelector from '@/components/FavoriteTeamsSelector'
+import ReferralCopyButton from '@/components/ReferralCopyButton'
 
 const LEAGUES = ['Süper Lig', 'Premier Lig', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Şampiyonlar Ligi', 'Dünya Kupası 2026']
 
@@ -17,13 +20,18 @@ export default async function ProfilPage({
   const { data: { user: authUser } } = await supabase.auth.getUser()
   const sp = await searchParams
 
-  if (!authUser) redirect('/giris')
+  if (!authUser) redirect('/giris?sonra=profil')
 
-  const [{ data: profile }, { data: favsData }, { data: pendingData }] = await Promise.all([
+  const [{ data: profile }, { data: favsData }, { data: pendingData }, { data: matchTeamsData }] = await Promise.all([
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('favorites').select('match_id').eq('user_id', authUser.id).order('created_at', { ascending: false }),
     supabase.from('pending_approvals').select('days,amount_try,created_at').eq('user_id', authUser.id).maybeSingle(),
+    supabase.from('matches').select('home_team, away_team').limit(200),
   ])
+
+  const allTeams = matchTeamsData
+    ? [...new Set(matchTeamsData.flatMap((m: { home_team: string; away_team: string }) => [m.home_team, m.away_team]))].sort() as string[]
+    : []
 
   const p = profile as User
   const pendingApproval = pendingData as { days: number; amount_try: number | null; created_at: string } | null
@@ -34,11 +42,15 @@ export default async function ProfilPage({
   if (favMatchIds.length > 0) {
     const { data: md } = await supabase
       .from('matches')
-      .select('id,home_team,away_team,match_time,league_name,status,confidence_score,prediction,home_score,away_score')
+      .select('id,home_team,away_team,match_time,league_name,status,confidence_score,prediction,home_score,away_score,prediction_correct')
       .in('id', favMatchIds)
       .order('match_time', { ascending: true })
     favMatches = (md ?? []) as Match[]
   }
+
+  const finishedFavs = favMatches.filter(m => m.status === 'bitti' && m.prediction_correct !== null && m.prediction_correct !== undefined)
+  const correctFavs  = finishedFavs.filter(m => m.prediction_correct === true)
+  const isabetOrani  = finishedFavs.length >= 3 ? Math.round((correctFavs.length / finishedFavs.length) * 100) : null
 
   const premiumAktif = p?.is_premium && p?.premium_until
     ? new Date(p.premium_until) > new Date()
@@ -214,13 +226,48 @@ export default async function ProfilPage({
             <code style={{ flex: 1, padding: '0.6rem 0.85rem', background: 'var(--color-base)', border: '1.5px solid var(--color-border)', borderRadius: '7px', fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.05em', minWidth: '120px' }}>
               {p.referral_code}
             </code>
-            <a
-              href={`https://kritik-wine.vercel.app/kayit?ref=${p.referral_code}`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', textDecoration: 'none', padding: '0.55rem 1rem', border: '1.5px solid var(--color-border)', borderRadius: '7px', whiteSpace: 'nowrap' }}
-            >
-              Linki Kopyala
-            </a>
+            <ReferralCopyButton url={`https://kritik-wine.vercel.app/kayit?ref=${p.referral_code}`} />
+          </div>
+        </div>
+      )}
+
+      {/* Tahmin İsabet Oranı */}
+      {isabetOrani !== null && (
+        <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '1rem' }}>
+            Takip Ettiğin Tahminler
+          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '3rem', lineHeight: 1,
+                color: isabetOrani >= 60 ? 'var(--color-success)' : isabetOrani >= 45 ? 'var(--color-warning)' : 'var(--color-accent)',
+              }}>
+                %{isabetOrani}
+              </div>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginTop: '0.25rem' }}>
+                İsabet Oranı
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: '120px' }}>
+              <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '0.75rem' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.5rem', color: 'var(--color-success)' }}>{correctFavs.length}</div>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Doğru</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.5rem', color: 'var(--color-accent)' }}>{finishedFavs.length - correctFavs.length}</div>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Yanlış</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.5rem', color: 'var(--color-text-secondary)' }}>{finishedFavs.length}</div>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Toplam</div>
+                </div>
+              </div>
+              <div style={{ height: '6px', borderRadius: '99px', background: 'var(--color-border)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: '99px', background: isabetOrani >= 60 ? 'var(--color-success)' : 'var(--color-warning)', width: `${isabetOrani}%`, transition: 'width 0.4s ease' }} />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -268,6 +315,43 @@ export default async function ProfilPage({
           </div>
         </div>
       )}
+
+      {/* İsabet Oranı Panosu linki */}
+      <a href="/istatistikler" style={{ textDecoration: 'none' }}>
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          background: 'var(--color-surface-2)',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border)',
+          marginBottom: '1.25rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+        }}>
+          <div>
+            <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.15rem' }}>
+              İsabet Oranı Panosu
+            </p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)' }}>
+              Algoritmanın doğruluk oranlarını ve lig bazında performansını gör
+            </p>
+          </div>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>→</span>
+        </div>
+      </a>
+
+      {/* Favori Takım Takibi */}
+      <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.4rem' }}>
+          Favori Takım Takibi
+        </h2>
+        <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
+          Takip ettiğin takımların maçları ♥ işaretiyle vurgulanır. Listede olmayan takım adını yazıp ekleyebilirsin.
+        </p>
+        <FavoriteTeamsSelector
+          allTeams={allTeams}
+          savedTeams={p?.notif_teams ?? []}
+          action={updateFavoriteTeams}
+        />
+      </div>
 
       {/* Bildirim Tercihleri */}
       <div style={{ padding: '1.5rem', background: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)', marginBottom: '1.25rem' }}>
@@ -318,16 +402,11 @@ export default async function ProfilPage({
             <input type="hidden" name="notif_leagues" id="notif_leagues_hidden" />
           </div>
 
-          {/* Telegram toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.1rem' }}>Telegram Bildirimleri</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>@KritikPremiumBot üzerinden</div>
-            </div>
-            <select name="notif_telegram" defaultValue={p?.notif_telegram !== false ? 'true' : 'false'} style={{ padding: '0.4rem 0.65rem', border: '1.5px solid var(--color-border)', borderRadius: '6px', fontSize: '0.82rem', fontFamily: 'var(--font-body)', background: 'var(--color-base)', color: 'var(--color-text-primary)' }}>
-              <option value="true">Açık</option>
-              <option value="false">Kapalı</option>
-            </select>
+          {/* Telegram bağlama */}
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.15rem' }}>Telegram Bildirimleri</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>@KritikPremiumBot üzerinden yeni kupon ve maç bildirimleri</div>
+            <TelegramLinkSection chatId={p?.telegram_chat_id ?? null} disconnectAction={disconnectTelegram} />
           </div>
 
           <button type="submit" style={{ padding: '0.65rem', background: 'var(--color-accent)', color: 'oklch(97% 0.005 255)', border: 'none', borderRadius: '8px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
