@@ -4,6 +4,14 @@ import { useMemo, useState } from 'react'
 import { Match } from '@/lib/types'
 import { translateTeam } from '@/lib/team-names'
 
+function labelPrediction(p: string, homeTeam: string, awayTeam: string): string {
+  const l = p.toLowerCase().trim()
+  if (l === 'ms1') return `${translateTeam(homeTeam)} Kazanır`
+  if (l === 'ms2') return `${translateTeam(awayTeam)} Kazanır`
+  if (l === 'x' || l === 'beraberlik') return 'Beraberlik'
+  return p
+}
+
 const LEAGUE_ORDER = [
   'Süper Lig', 'Dünya Kupası 2026', 'Şampiyonlar Ligi',
   'Premier Lig', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1',
@@ -32,6 +40,7 @@ export default function ResultsListClient({ matches }: Props) {
 
   const filtered = useMemo(() => {
     return matches.filter(m => {
+      if (m.prediction_correct === null) return false  // sonucu belli olmayanları gizle
       if (league !== 'Tümü' && (m.league_name ?? 'Genel') !== league) return false
       if (filter === 'doğru'  && m.prediction_correct !== true)  return false
       if (filter === 'yanlış' && m.prediction_correct !== false) return false
@@ -208,7 +217,7 @@ function ResultRow({ match: m, isLast }: { match: Match; isLast: boolean }) {
             {m.prediction && (
               <span style={{
                 fontSize: '0.72rem', fontWeight: 700,
-                letterSpacing: '0.05em', textTransform: 'uppercase',
+                letterSpacing: '0.03em',
                 padding: '0.15rem 0.5rem', borderRadius: '4px',
                 background: isCorrect
                   ? 'var(--color-success-bg)'
@@ -222,7 +231,7 @@ function ResultRow({ match: m, isLast }: { match: Match; isLast: boolean }) {
                   : 'var(--color-text-secondary)',
                 border: `1px solid ${isCorrect ? 'var(--color-success)' : isWrong ? 'var(--color-accent)' : 'var(--color-border)'}`,
               }}>
-                {m.prediction}
+                {labelPrediction(m.prediction, m.home_team, m.away_team)}
                 {m.prediction_confidence ? ` %${m.prediction_confidence}` : ''}
               </span>
             )}
