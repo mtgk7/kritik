@@ -12,8 +12,9 @@ export const revalidate = 0
 export const metadata = meta('Maçlar', 'Yaklaşan maçların xG, form ve güven skoru analizleri.')
 
 export default async function HomePage() {
+  const now = new Date().toISOString()
   const [matches, latestNews] = await Promise.all([
-    supabaseFetch<Match>('matches?select=*&status=neq.bitti&order=match_time.asc', CACHE.MATCHES),
+    supabaseFetch<Match>(`matches?select=*&or=(status.eq.canlı,match_time.gte.${now})&order=match_time.asc`, CACHE.MATCHES),
     supabaseFetch<News>('news?select=*&is_published=eq.true&order=published_at.desc&limit=8', CACHE.NEWS),
   ])
 

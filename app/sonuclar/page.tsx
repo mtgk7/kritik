@@ -8,8 +8,9 @@ export const revalidate = 0
 export const metadata = meta('Sonuçlar', 'Biten maçlar ve tahminlerimizin sonuçları.')
 
 export default async function SonuclarPage() {
+  const now = new Date().toISOString()
   const matches = await supabaseFetch<Match>(
-    'matches?select=*&status=eq.bitti&order=match_time.desc&limit=200',
+    `matches?select=*&match_time=lt.${now}&status=neq.canlı&order=match_time.desc&limit=200`,
     CACHE.MATCHES,
   )
 
