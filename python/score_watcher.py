@@ -214,12 +214,13 @@ def run_once(client) -> bool:
 
     live_events = fetch("https://api.sofascore.com/api/v1/sport/football/events/live")
 
-    all_events = (
-        live_events
-        + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{yesterday}")
-        + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{today}")
-        + fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{tomorrow}")
-    )
+    # Son 7 günü tara — eski güncellenmemiş maçlar için
+    date_range = [(now.date() - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
+    date_range.append((now.date() + timedelta(days=1)).isoformat())
+
+    all_events = list(live_events)
+    for d in date_range:
+        all_events += fetch(f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{d}")
 
     idx = build_index(all_events)
     updated = sync(client, idx)

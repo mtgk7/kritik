@@ -5,6 +5,20 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { sendTelegram } from '@/lib/telegram'
 
+function calcPredictionCorrect(prediction: string, home: number, away: number): boolean | null {
+  const p = prediction.toLowerCase().trim()
+  if (p === 'ms1')                                   return home > away
+  if (p === 'ms2')                                   return away > home
+  if (p === 'x' || p === 'beraberlik')               return home === away
+  if (p.includes('2.5 üst') || p.includes('2.5üst')) return home + away > 2.5
+  if (p.includes('2.5 alt') || p.includes('2.5alt')) return home + away <= 2
+  if (p.includes('1.5 üst') || p.includes('1.5üst')) return home + away > 1.5
+  if (p.includes('1.5 alt') || p.includes('1.5alt')) return home + away <= 1
+  if (p.includes('kg var'))                          return home > 0 && away > 0
+  if (p.includes('kg yok'))                          return home === 0 || away === 0
+  return null
+}
+
 function getServiceClient() {
   return createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -203,22 +217,34 @@ export async function updateMatch(formData: FormData) {
   const sofascoreInput = formData.get('sofascore_url') as string
   const sofascore_id   = parseSofaId(sofascoreInput)
 
+  const status     = (formData.get('status') || 'yakında') as string
+  const prediction = (formData.get('prediction') as string) || null
+  const home_score = formData.get('home_score') !== '' ? Number(formData.get('home_score')) : null
+  const away_score = formData.get('away_score') !== '' ? Number(formData.get('away_score')) : null
+
+  // Status bitti + skorlar varsa prediction_correct otomatik hesapla
+  let prediction_correct: boolean | null = null
+  if (status === 'bitti' && prediction && home_score !== null && away_score !== null) {
+    prediction_correct = calcPredictionCorrect(prediction, home_score, away_score)
+  }
+
   const { error } = await supabase.from('matches').update({
     home_team: formData.get('home_team'),
     away_team: formData.get('away_team'),
     match_time: formData.get('match_time'),
     league_name: formData.get('league_name') || 'Genel',
-    status: formData.get('status') || 'yakında',
-    home_score: formData.get('home_score') !== '' ? Number(formData.get('home_score')) : null,
-    away_score: formData.get('away_score') !== '' ? Number(formData.get('away_score')) : null,
+    status,
+    home_score,
+    away_score,
     home_xg: formData.get('home_xg') ? Number(formData.get('home_xg')) : null,
     away_xg: formData.get('away_xg') ? Number(formData.get('away_xg')) : null,
     home_form_score: formData.get('home_form_score') ? Number(formData.get('home_form_score')) : null,
     away_form_score: formData.get('away_form_score') ? Number(formData.get('away_form_score')) : null,
     critical_missing_effect: formData.get('critical_missing_effect') ? Number(formData.get('critical_missing_effect')) : null,
     confidence_score: formData.get('confidence_score') ? Number(formData.get('confidence_score')) : null,
-    prediction: formData.get('prediction') || null,
+    prediction,
     prediction_confidence: formData.get('prediction_confidence') ? Number(formData.get('prediction_confidence')) : null,
+    prediction_correct,
     analysis: formData.get('analysis') || null,
     is_free_preview: formData.get('is_free_preview') === 'true',
     missing_players,
