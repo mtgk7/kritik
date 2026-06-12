@@ -316,7 +316,7 @@ export async function triggerScores() {
     return redirect(`/admin?error=${encodeURIComponent(msg)}`)
   }
 
-  return redirect('/admin?mesaj=Skor+taraması+başlatıldı')
+  return redirect('/admin?mesaj=Skor+taramas%C4%B1+ba%C5%9Flat%C4%B1ld%C4%B1')
 }
 
 export async function requestCouponPurchase(formData: FormData) {
