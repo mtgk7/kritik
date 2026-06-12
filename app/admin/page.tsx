@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Match, Coupon, News } from '@/lib/types'
 import {
-  deleteMatch, deleteCoupon, deleteNews, triggerBot, sendWeeklyDigest,
+  deleteMatch, deleteCoupon, deleteNews, triggerBot, triggerScores, sendWeeklyDigest,
   approvePendingApproval, rejectPendingApproval,
   approveCouponPurchase, rejectCouponPurchase,
 } from '@/app/actions/admin'
@@ -101,6 +101,15 @@ export default async function AdminPage({
               border: 'none', borderRadius: '7px', cursor: 'pointer', fontFamily: 'var(--font-body)',
             }}>
               ▶ Bot Tetikle
+            </button>
+          </form>
+          <form action={triggerScores}>
+            <button type="submit" style={{
+              padding: '0.5rem 1rem', fontSize: '0.82rem', fontWeight: 600,
+              background: 'var(--color-success)', color: 'oklch(97% 0.005 255)',
+              border: 'none', borderRadius: '7px', cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}>
+              ⚽ Skorları Tara
             </button>
           </form>
         </div>

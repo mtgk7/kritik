@@ -287,6 +287,38 @@ export async function triggerBot() {
   return redirect('/admin?mesaj=Bot+tetiklendi')
 }
 
+export async function triggerScores() {
+  const raw   = process.env.GH_PAT ?? ''
+  const token = raw.split('').filter(c => { const n = c.charCodeAt(0); return n >= 32 && n <= 126 }).join('').trim() || null
+  const repo  = process.env.GITHUB_REPO ?? 'mtgk7/kritik'
+
+  if (!token) return redirect('/admin?error=GH_PAT+eksik')
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/actions/workflows/scores.yml/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ref: 'master' }),
+      }
+    )
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return redirect(`/admin?error=${encodeURIComponent(`HTTP ${res.status}: ${body.slice(0, 100)}`)}`)
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return redirect(`/admin?error=${encodeURIComponent(msg)}`)
+  }
+
+  return redirect('/admin?mesaj=Skor+taraması+başlatıldı')
+}
+
 export async function requestCouponPurchase(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

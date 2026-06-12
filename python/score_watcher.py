@@ -55,11 +55,28 @@ def fetch(url: str) -> list[dict]:
         return []
 
 
+def fetch_event_by_id(event_id: int) -> dict | None:
+    """Tek bir maçı ID ile doğrudan çeker."""
+    try:
+        r = requests.get(
+            f"https://api.sofascore.com/api/v1/event/{event_id}",
+            headers=SOFA_HEADERS, timeout=10,
+        )
+        r.raise_for_status()
+        return r.json().get("event")
+    except Exception as e:
+        log.warning(f"fetch_event_by_id({event_id}) failed: {e}")
+        return None
+
+
 def build_index(events: list[dict]) -> dict[str, dict]:
     idx = {}
     for e in events:
         key = f"{norm(e['homeTeam']['name'])}|{norm(e['awayTeam']['name'])}"
         idx[key] = e
+        # ID ile de erişilebilsin
+        if e.get("id"):
+            idx[str(e["id"])] = e
     return idx
 
 
@@ -80,6 +97,41 @@ def check_prediction(prediction: str | None, home: int, away: int) -> bool | Non
     return None
 
 
+def apply_event(client, row: dict, event: dict) -> bool:
+    """Bir maç kaydını SofaScore event verisiyle günceller. True = değişiklik yapıldı."""
+    sofa_type = event.get("status", {}).get("type", "notstarted")
+    new_status = STATUS_MAP.get(sofa_type)
+    if new_status is None:
+        return False
+
+    patch: dict = {"status": new_status}
+
+    if not row.get("sofascore_id"):
+        patch["sofascore_id"]      = event.get("id")
+        patch["sofascore_home_id"] = event.get("homeTeam", {}).get("id")
+        patch["sofascore_away_id"] = event.get("awayTeam", {}).get("id")
+
+    if new_status in ("canlı", "bitti"):
+        hs  = (event.get("homeScore") or {}).get("current")
+        as_ = (event.get("awayScore") or {}).get("current")
+        if hs  is not None: patch["home_score"] = hs
+        if as_ is not None: patch["away_score"] = as_
+
+    if new_status == "bitti" and row.get("prediction_correct") is None:
+        hs  = patch.get("home_score")
+        as_ = patch.get("away_score")
+        if hs is not None and as_ is not None:
+            result = check_prediction(row.get("prediction"), int(hs), int(as_))
+            if result is not None:
+                patch["prediction_correct"] = result
+
+    client.table("matches").update(patch).eq("id", row["id"]).execute()
+    score_str   = f"{patch.get('home_score', '?')}-{patch.get('away_score', '?')}"
+    correct_str = f" {'✓' if patch.get('prediction_correct') else '✗'}" if "prediction_correct" in patch else ""
+    log.info(f"  {row['home_team']} - {row['away_team']} → {new_status} {score_str}{correct_str}")
+    return True
+
+
 def sync(client, idx: dict) -> int:
     rows = (
         client.table("matches")
@@ -91,45 +143,24 @@ def sync(client, idx: dict) -> int:
 
     updated = 0
     for row in rows:
-        key = f"{norm(row['home_team'])}|{norm(row['away_team'])}"
-        event = idx.get(key)
+        # 1) sofascore_id varsa direkt ID ile bak (en güvenilir)
+        event = None
+        if row.get("sofascore_id"):
+            event = idx.get(str(row["sofascore_id"]))
+            if not event:
+                # Index'te yoksa doğrudan API'ye sor
+                event = fetch_event_by_id(row["sofascore_id"])
+
+        # 2) ID yoksa isim bazlı eşleştir
+        if not event:
+            key   = f"{norm(row['home_team'])}|{norm(row['away_team'])}"
+            event = idx.get(key)
+
         if not event:
             continue
 
-        sofa_type = event.get("status", {}).get("type", "notstarted")
-        new_status = STATUS_MAP.get(sofa_type)
-        if new_status is None:
-            continue
-
-        patch: dict = {"status": new_status}
-
-        # SofaScore ID'lerini kaydet (link + H2H için)
-        if not row.get("sofascore_id"):
-            patch["sofascore_id"]      = event.get("id")
-            patch["sofascore_home_id"] = event.get("homeTeam", {}).get("id")
-            patch["sofascore_away_id"] = event.get("awayTeam", {}).get("id")
-
-        if new_status in ("canlı", "bitti"):
-            hs = (event.get("homeScore") or {}).get("current")
-            as_ = (event.get("awayScore") or {}).get("current")
-            if hs is not None:
-                patch["home_score"] = hs
-            if as_ is not None:
-                patch["away_score"] = as_
-
-        if new_status == "bitti" and row.get("prediction_correct") is None:
-            hs = patch.get("home_score")
-            as_ = patch.get("away_score")
-            if hs is not None and as_ is not None:
-                result = check_prediction(row.get("prediction"), int(hs), int(as_))
-                if result is not None:
-                    patch["prediction_correct"] = result
-
-        client.table("matches").update(patch).eq("id", row["id"]).execute()
-        score_str = f"{patch.get('home_score', '?')}-{patch.get('away_score', '?')}"
-        correct_str = f" {'✓' if patch.get('prediction_correct') else '✗'}" if "prediction_correct" in patch else ""
-        log.info(f"  {row['home_team']} - {row['away_team']} → {new_status} {score_str}{correct_str}")
-        updated += 1
+        if apply_event(client, row, event):
+            updated += 1
 
     return updated
 
