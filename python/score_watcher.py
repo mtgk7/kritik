@@ -172,7 +172,7 @@ def fetch_football_data_scores(client) -> int:
     if not key:
         return 0
 
-    leagues = ["WC", "PL", "PD", "BL1", "SA", "FL1", "CL", "EL"]
+    leagues = ["WC", "TR1", "PL", "PD", "BL1", "SA", "FL1", "CL", "EL"]
     updated = 0
 
     for league in leagues:
@@ -212,7 +212,7 @@ def fetch_football_data_scores(client) -> int:
                 key_norm = f"{norm(ht)}|{norm(at)}"
                 rows = (
                     client.table("matches")
-                    .select("id, prediction, prediction_correct, status")
+                    .select("id, home_team, away_team, prediction, prediction_correct, status")
                     .neq("status", "bitti")
                     .execute()
                     .data or []
