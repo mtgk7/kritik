@@ -154,14 +154,41 @@ RSS_FEEDS = [
     },
 ]
 
-# Futbolla ilgili anahtar kelimeler (alakasız haberleri filtreler)
-FOOTBALL_KEYWORDS = [
-    "gol", "maç", "lig", "transfer", "futbol", "takım", "oyuncu",
-    "teknik direktör", "şampiyonluk", "kupa", "süper lig", "galatasaray",
-    "fenerbahçe", "beşiktaş", "trabzonspor",
-    "football", "soccer", "goal", "match", "league", "transfer", "player",
-    "manager", "championship", "cup", "premier", "bundesliga", "laliga",
-    "world cup", "fifa", "uefa", "champions",
+# Güçlü futbol/spor sinyalleri — bunlardan biri yeterliyse geçir
+FOOTBALL_STRONG = [
+    "galatasaray", "fenerbahçe", "fenerbahce", "beşiktaş", "besiktas",
+    "trabzonspor", "başakşehir", "basaksehir", "kayserispor", "sivasspor",
+    "antalyaspor", "konyaspor", "alanyaspor", "rizespor", "kasımpaşa",
+    "samsunspor", "pendikspor",
+    "transfer", "teknik direktör", "sözleşme imzaladı", "bonservis",
+    "süper lig", "super lig", "şampiyonlar ligi", "champions league",
+    "premier league", "bundesliga", "la liga", "laliga", "serie a",
+    "dünya kupası", "world cup", "fifa world", "euro 2026",
+    "football", "soccer", "goalkeeper", "striker", "midfielder",
+    "real madrid", "barcelona", "manchester", "liverpool", "arsenal",
+    "chelsea", "juventus", "psg", "paris saint", "bayern", "dortmund",
+    "inter milan", "ac milan", "napoli", "atletico",
+    "milli takım", "a milli", "milli maç",
+    "penaltı", "kırmızı kart", "sarı kart", "hat-trick", "hat trick",
+]
+
+# Zayıf sinyaller — tek başına yetmez, en az 2 tane gerekli
+FOOTBALL_WEAK = [
+    "gol", "maç", "lig", "futbol", "takım", "oyuncu", "şampiyonluk",
+    "kupa", "goal", "match", "league", "player", "manager", "championship",
+    "cup", "fifa", "uefa", "champions", "antrenman", "sakat", "eksik",
+]
+
+# Bu ifadeler başlıkta varsa kesinlikle reddet (reklam / spor dışı)
+BLOCKED_PHRASES = [
+    "misli", "misli.com", "bilyoner", "nesine.com",
+    "anma mesajı", "taziye", "vefat etti", "hayatını kaybetti",
+    "orman yangın", "yangın çıktı", "deprem", "sel felaketi",
+    "spacex", "yapay zekâ anlaşması", "yapay zeka anlaşması",
+    "bodrum jet-set", "tatil sezonu", "yıldız otel",
+    "borsa", "döviz kuru", "faiz kararı", "enflasyon",
+    "seçim", "meclis", "cumhurbaşkanı açıkladı", "bakan açıkladı",
+    "ibra kararı",  # tff haberleri değil şirket genel kurulları
 ]
 
 
@@ -183,8 +210,20 @@ def _parse_date(entry: dict) -> datetime | None:
 
 
 def _is_football_related(title: str, summary: str) -> bool:
+    title_lower = title.lower()
     text = (title + " " + summary).lower()
-    return any(kw in text for kw in FOOTBALL_KEYWORDS)
+
+    # Önce engelleme listesini kontrol et
+    if any(phrase in title_lower for phrase in BLOCKED_PHRASES):
+        return False
+
+    # Güçlü sinyal varsa geçir
+    if any(kw in text for kw in FOOTBALL_STRONG):
+        return True
+
+    # Zayıf sinyallerden en az 2 tane varsa geçir
+    weak_count = sum(1 for kw in FOOTBALL_WEAK if kw in text)
+    return weak_count >= 2
 
 
 def _title_hash(title: str) -> str:

@@ -78,6 +78,7 @@ export type Coupon = {
   is_premium: boolean
   is_editor_pick: boolean
   editor_note: string | null
+  price_try: number | null
   created_at: string
 }
 
@@ -106,11 +107,23 @@ export type User = {
   is_premium: boolean
   premium_until: string | null
   notif_leagues: string[]
+  notif_teams: string[]
   notif_min_conf: number
   notif_telegram: boolean
   referral_code: string | null
   referred_by: string | null
   trial_used: boolean
+  telegram_chat_id: number | null
+  telegram_verify_token: string | null
+  created_at: string
+}
+
+export type MatchAnalysisRequest = {
+  id: string
+  user_id: string
+  match_id: string
+  status: string
+  analysis: string | null
   created_at: string
 }
 
@@ -119,4 +132,31 @@ export type Favorite = {
   user_id: string
   match_id: string
   created_at: string
+}
+
+export type MatchOdds = {
+  id: string
+  match_id: string
+  source: 'iddaa' | 'misli' | 'nesine'
+  ms1: number | null
+  x: number | null
+  ms2: number | null
+  over25: number | null
+  under25: number | null
+  kg_var: number | null
+  kg_yok: number | null
+  scraped_at: string
+}
+
+export type AiKuponMatch = {
+  id: string
+  home_team: string
+  away_team: string
+  league_name: string
+  match_time: string
+  confidence_score: number
+  prediction: string
+  prediction_confidence: number | null
+  market_odds: { ms1?: number; x?: number; ms2?: number; over25?: number; under25?: number } | null
+  reasoning: string
 }

@@ -1,6 +1,44 @@
 import { supabaseFetch } from '@/lib/supabase/public'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { News } from '@/lib/types'
+
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
+
+const FALLBACK_IMG: Record<string, string> = {
+  gunun_haberi:    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200&q=80',
+  haftanin_haberi: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=1200&q=80',
+  genel:           'https://images.unsplash.com/photo-1518604666860-9ed391f76460?w=1200&q=80',
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const rows = await supabaseFetch<News>(`news?select=title,summary,image_url,category,published_at,tag&id=eq.${id}&is_published=eq.true&limit=1`)
+  const item = rows[0]
+  if (!item) return {}
+
+  const img  = item.image_url ?? FALLBACK_IMG[item.category] ?? FALLBACK_IMG.genel
+  const desc = (item.summary ?? '').slice(0, 155) || 'Kritik spor haberleri ve analizleri.'
+
+  return {
+    title:       `${item.title} — Kritik`,
+    description: desc,
+    openGraph: {
+      title:         item.title,
+      description:   desc,
+      url:           `${SITE}/haberler/${id}`,
+      type:          'article',
+      publishedTime: item.published_at,
+      images:        [{ url: img, width: 1200, height: 630, alt: item.title }],
+    },
+    twitter: {
+      card:        'summary_large_image',
+      title:       item.title,
+      description: desc,
+      images:      [img],
+    },
+  }
+}
 
 export default async function HaberDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

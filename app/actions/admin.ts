@@ -1,7 +1,76 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
+import { sendTelegram } from '@/lib/telegram'
+
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
+
+export async function approvePendingApproval(formData: FormData) {
+  const id      = formData.get('id') as string
+  const userId  = formData.get('user_id') as string
+  const days    = parseInt(formData.get('days') as string, 10)
+  const email   = formData.get('email') as string
+
+  const supabase = getServiceClient()
+
+  // Premium süresini hesapla
+  const { data: profile } = await supabase.from('users').select('premium_until').eq('id', userId).single()
+  const base = profile?.premium_until && new Date(profile.premium_until) > new Date()
+    ? new Date(profile.premium_until)
+    : new Date()
+  base.setDate(base.getDate() + days)
+
+  await supabase.from('users').update({
+    is_premium:    true,
+    premium_until: base.toISOString(),
+  }).eq('id', userId)
+
+  await supabase.from('pending_approvals').delete().eq('id', id)
+
+  await sendTelegram(`✅ <b>Premium Aktifleştirildi</b>\n${email} → +${days} gün`)
+
+  return redirect('/admin?mesaj=Premium aktifleştirildi')
+}
+
+export async function rejectPendingApproval(formData: FormData) {
+  const id    = formData.get('id') as string
+  const email = formData.get('email') as string
+
+  const supabase = getServiceClient()
+  await supabase.from('pending_approvals').delete().eq('id', id)
+  await sendTelegram(`❌ <b>Ödeme Reddedildi</b>\n${email}`)
+
+  return redirect('/admin?mesaj=Ödeme reddedildi')
+}
+
+export async function approveCouponPurchase(formData: FormData) {
+  const id    = formData.get('id') as string
+  const email = formData.get('email') as string
+
+  const supabase = getServiceClient()
+  await supabase.from('coupon_purchases').update({ status: 'onaylandi' }).eq('id', id)
+  await sendTelegram(`✅ <b>Kupon Talebi Onaylandı</b>\n${email}`)
+
+  return redirect('/admin?mesaj=Kupon talebi onaylandı')
+}
+
+export async function rejectCouponPurchase(formData: FormData) {
+  const id    = formData.get('id') as string
+  const email = formData.get('email') as string
+
+  const supabase = getServiceClient()
+  await supabase.from('coupon_purchases').update({ status: 'reddedildi' }).eq('id', id)
+  await sendTelegram(`❌ <b>Kupon Talebi Reddedildi</b>\n${email}`)
+
+  return redirect('/admin?mesaj=Kupon talebi reddedildi')
+}
 
 export async function addNews(formData: FormData) {
   const supabase = await createClient()
@@ -84,6 +153,7 @@ export async function addCoupon(formData: FormData) {
     ? checkboxIds.filter(Boolean)
     : (textareaVal ?? '').split(',').map(s => s.trim()).filter(Boolean)
 
+  const priceTry = formData.get('price_try') as string
   const { error } = await supabase.from('coupons').insert({
     coupon_type:    formData.get('coupon_type'),
     matches:        matchIds,
@@ -91,6 +161,7 @@ export async function addCoupon(formData: FormData) {
     is_premium:     formData.get('is_premium') === 'true',
     is_editor_pick: formData.get('is_editor_pick') === 'true',
     editor_note:    (formData.get('editor_note') as string)?.trim() || null,
+    price_try:      priceTry ? parseInt(priceTry) : null,
   })
 
   if (error) {
@@ -188,4 +259,63 @@ export async function triggerBot() {
   }
 
   return redirect('/admin?mesaj=Bot+tetiklendi')
+}
+
+export async function requestCouponPurchase(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return redirect('/giris?sonra=kuponlar')
+
+  const coupon_id  = formData.get('coupon_id') as string
+  const amount_try = parseInt(formData.get('amount_try') as string)
+
+  // Daha önce talep ettiyse tekrar ekleme
+  const { data: existing } = await supabase
+    .from('coupon_purchases')
+    .select('id')
+    .eq('coupon_id', coupon_id)
+    .eq('user_id', user.id)
+    .eq('status', 'bekliyor')
+    .single()
+
+  if (!existing) {
+    await supabase.from('coupon_purchases').insert({
+      coupon_id,
+      user_id:    user.id,
+      email:      user.email ?? '',
+      amount_try,
+    })
+
+    await sendTelegram(
+      `🛒 <b>Kupon Satın Alma Talebi</b>\n` +
+      `Kullanıcı: ${user.email}\n` +
+      `Kupon ID: ${coupon_id}\n` +
+      `Fiyat: ₺${amount_try}\n\n` +
+      `Onayla: Supabase → coupon_purchases tablosu → status = 'onaylandi'`
+    )
+  }
+
+  return redirect(`/kuponlar/${coupon_id}?talep=gonderildi`)
+}
+
+export async function sendWeeklyDigest() {
+  const secret  = process.env.ALGORITHM_SECRET ?? ''
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
+
+  if (!secret) return redirect('/admin?error=ALGORITHM_SECRET+eksik')
+
+  try {
+    const res = await fetch(`${siteUrl}/api/email/weekly-digest`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secret}` },
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return redirect(`/admin?error=${encodeURIComponent(data.error ?? `HTTP ${res.status}`)}`)
+    }
+    return redirect(`/admin?mesaj=${encodeURIComponent(`Haftalık özet ${data.sent ?? 0} kişiye gönderildi`)}`)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return redirect(`/admin?error=${encodeURIComponent(msg)}`)
+  }
 }

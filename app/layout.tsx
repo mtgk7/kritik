@@ -49,6 +49,15 @@ export default function RootLayout({
       lang="tr"
       className={`${inter.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
+      <head>
+        {process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID && (
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID}`}
+            crossOrigin="anonymous"
+          />
+        )}
+      </head>
       <body className="min-h-full flex flex-col" style={{ background: "var(--color-base)", color: "var(--color-text-primary)", fontFamily: "var(--font-inter), system-ui, sans-serif" }}>
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>
@@ -61,19 +70,36 @@ export default function RootLayout({
             </Script>
           </>
         )}
-        {process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID && (
-          <Script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID}`}
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
-        )}
         <Script id="sw-register" strategy="afterInteractive">
           {`if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')`}
         </Script>
         <Navbar />
-        {children}
+        <div style={{ flex: 1 }}>
+          {children}
+        </div>
+        <footer style={{
+          borderTop: '1px solid var(--color-border)',
+          padding: '1.25rem var(--page-pad)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+        }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
+            © {new Date().getFullYear()} Kritik · Yalnızca bilgilendirme amaçlıdır
+          </p>
+          <nav style={{ display: 'flex', gap: '1.25rem' }}>
+            {[
+              { href: '/kullanim-kosullari', label: 'Kullanım Koşulları' },
+              { href: '/gizlilik-politikasi', label: 'Gizlilik Politikası' },
+            ].map(l => (
+              <a key={l.href} href={l.href} style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>
+                {l.label}
+              </a>
+            ))}
+          </nav>
+        </footer>
       </body>
     </html>
   );

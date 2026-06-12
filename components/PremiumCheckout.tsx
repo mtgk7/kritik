@@ -3,9 +3,10 @@
 import { useState } from 'react'
 
 const PLANS = [
-  { id: 'monthly',   label: 'Aylık',    price: '₺149',  note: '/ay' },
-  { id: 'quarterly', label: '3 Aylık',  price: '₺379',  note: '/3 ay' },
-  { id: 'annual',    label: 'Yıllık',   price: '₺1.199', note: '/yıl' },
+  { id: 'weekly',    label: 'Haftalık', price: '₺149',   original: null,     discount: null,  note: '/hafta' },
+  { id: 'monthly',   label: 'Aylık',    price: '₺399',   original: null,     discount: null,  note: '/ay' },
+  { id: 'quarterly', label: '3 Aylık',  price: '₺999',   original: '₺1.197', discount: '%17', note: '/3 ay' },
+  { id: 'annual',    label: 'Yıllık',   price: '₺3.900', original: '₺4.788', discount: '%19', note: '/yıl' },
 ]
 
 export default function PremiumCheckout() {
@@ -38,19 +39,35 @@ export default function PremiumCheckout() {
         {PLANS.map(p => (
           <button key={p.id} onClick={() => setSelected(p.id)} style={{
             flex: 1, minWidth: '90px',
-            padding: '0.65rem 0.5rem', borderRadius: '8px', cursor: 'pointer',
+            padding: '0.7rem 0.5rem', borderRadius: '8px', cursor: 'pointer',
             fontFamily: 'var(--font-body)',
             border: selected === p.id ? '2px solid var(--color-premium)' : '1.5px solid var(--color-border)',
             background: selected === p.id ? 'var(--color-premium-bg)' : 'var(--color-base)',
             transition: 'border-color 0.15s, background 0.15s',
+            position: 'relative',
           }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '0.2rem' }}>
+            {p.discount && (
+              <div style={{
+                position: 'absolute', top: '-8px', left: '50%', transform: 'translateX(-50%)',
+                fontSize: '0.55rem', fontWeight: 800, color: 'var(--color-success)',
+                background: 'var(--color-success-bg)', borderRadius: '3px',
+                padding: '0.1rem 0.35rem', whiteSpace: 'nowrap', letterSpacing: '0.04em',
+              }}>
+                {p.discount}
+              </div>
+            )}
+            <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '0.25rem' }}>
               {p.label}
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.15rem', color: selected === p.id ? 'var(--color-premium)' : 'var(--color-text-primary)', lineHeight: 1 }}>
+            {p.original && (
+              <div style={{ fontSize: '0.68rem', color: 'var(--color-text-tertiary)', textDecoration: 'line-through', lineHeight: 1 }}>
+                {p.original}
+              </div>
+            )}
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.35rem', color: selected === p.id ? 'var(--color-premium)' : 'var(--color-text-primary)', lineHeight: 1, marginTop: '0.1rem' }}>
               {p.price}
             </div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-tertiary)', marginTop: '0.1rem' }}>
+            <div style={{ fontSize: '0.62rem', color: 'var(--color-text-tertiary)', marginTop: '0.15rem' }}>
               {p.note}
             </div>
           </button>

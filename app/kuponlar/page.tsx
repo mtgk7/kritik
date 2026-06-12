@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Coupon } from '@/lib/types'
 import { meta } from '@/lib/metadata'
+import { requestCouponPurchase } from '@/app/actions/admin'
+import AdSlot from '@/components/AdSlot'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -9,6 +11,13 @@ export const metadata = meta('Kuponlar', 'Algoritmanın ürettiği ücretsiz ve 
 export default async function KuponlarPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  let isPremium = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users').select('is_premium,premium_until').eq('id', user.id).single()
+    isPremium = !!(profile?.is_premium && profile?.premium_until && new Date(profile.premium_until) > new Date())
+  }
 
   const { supabaseFetch } = await import('@/lib/supabase/public')
   const coupons = await supabaseFetch<Coupon>('coupons?select=*&is_editor_pick=eq.false&order=created_at.desc')
@@ -36,6 +45,31 @@ export default async function KuponlarPage() {
           Algoritmanın ürettiği kombinasyon önerileri
         </p>
       </div>
+
+      {/* AI Kupon Builder CTA */}
+      <a href="/ai-kupon" style={{ display: 'block', textDecoration: 'none', marginBottom: '2rem' }}>
+        <div style={{
+          padding: '1.1rem 1.5rem',
+          borderRadius: '12px',
+          background: isPremium ? 'var(--color-surface)' : 'var(--color-surface-2)',
+          border: `1.5px solid ${isPremium ? 'var(--color-accent)' : 'var(--color-border)'}`,
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          transition: 'border-color 0.15s',
+        }}>
+          <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🤖</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.15rem' }}>
+              AI ile Kupon Oluştur
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+              {isPremium
+                ? 'Güven eşiği, lig ve maç sayısı seç — AI kişisel kuponunu hazırlasın'
+                : 'Premium üyelere özel · Kendi kriterlerinle AI destekli kombinasyon'}
+            </div>
+          </div>
+          <span style={{ color: 'var(--color-text-tertiary)', fontSize: '1.1rem', flexShrink: 0 }}>→</span>
+        </div>
+      </a>
 
       {/* AI Hazır Kuponlar başlık */}
       <div style={{ marginBottom: '1.5rem' }}>
@@ -67,58 +101,100 @@ export default async function KuponlarPage() {
         )}
       </section>
 
+      {/* Reklam */}
+      <AdSlot
+        slot={process.env.NEXT_PUBLIC_AD_SLOT_KUPONLAR ?? ''}
+        format="fluid"
+        layout="in-article"
+        style={{ marginBottom: '2.5rem', textAlign: 'center' }}
+      />
+
       {/* Premium */}
       <section>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
           <SectionLabel>Premium</SectionLabel>
-          <span className="badge-premium">⭐ Üye ol</span>
+          {!isPremium && <span className="badge-premium">⭐ Üye ol</span>}
         </div>
 
         {premium.length === 0 ? (
           <EmptySection text="Premium kupon henüz eklenmedi." />
-        ) : (
+        ) : isPremium ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {premium.map((c: Coupon, i: number) => (
-              <CouponRow key={c.id} coupon={c} isLast={i === premium.length - 1} locked={!user} />
+              <CouponRow key={c.id} coupon={c} isLast={i === premium.length - 1} />
             ))}
           </div>
-        )}
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Ayrı satın alınabilir kuponlar */}
+            {premium.filter((c: Coupon) => c.price_try).map((c: Coupon) => (
+              <div key={c.id} style={{
+                padding: '1.25rem 1.5rem',
+                background: 'var(--color-surface)',
+                borderRadius: '12px',
+                border: '1.5px solid var(--color-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                flexWrap: 'wrap',
+              }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.2rem' }}>
+                    {c.coupon_type}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                    {c.matches.length} maç {c.total_rate ? `· Oran ${c.total_rate.toFixed(2)}` : ''}
+                  </div>
+                </div>
+                <form action={requestCouponPurchase} style={{ margin: 0 }}>
+                  <input type="hidden" name="coupon_id" value={c.id} />
+                  <input type="hidden" name="amount_try" value={c.price_try!} />
+                  <button type="submit" style={{
+                    padding: '0.55rem 1.1rem',
+                    background: 'var(--color-accent)',
+                    color: 'oklch(97% 0.005 255)',
+                    border: 'none', borderRadius: '8px',
+                    fontSize: '0.85rem', fontWeight: 700,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}>
+                    Satın Al · ₺{c.price_try}
+                  </button>
+                </form>
+              </div>
+            ))}
 
-        {!user && premium.length > 0 && (
-          <div style={{
-            marginTop: '1.5rem',
-            padding: '1.25rem 1.5rem',
-            background: 'var(--color-premium-bg)',
-            borderRadius: '10px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}>
-            <div>
-              <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '0.2rem' }}>
-                {premium.length} premium kupon mevcut
-              </p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                Yüksek güven skorlu kombinasyonlara erişmek için üye ol.
-              </p>
-            </div>
-            <a
-              href="/kayit"
-              style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: 'oklch(97% 0.005 255)',
-                background: 'var(--color-accent)',
-                textDecoration: 'none',
-                borderRadius: '7px',
-                padding: '0.5rem 1.1rem',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Kayıt Ol
-            </a>
+            {/* Premium üyelik gerektiren kuponlar (fiyatsız) */}
+            {premium.some((c: Coupon) => !c.price_try) && (
+              <div style={{
+                padding: '2rem 1.5rem',
+                background: 'var(--color-premium-bg)',
+                borderRadius: '12px',
+                border: '2px solid var(--color-border)',
+                textAlign: 'center',
+              }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <svg width="28" height="34" viewBox="0 0 28 34" fill="none" style={{ margin: '0 auto', display: 'block' }}>
+                    <rect x="1" y="13" width="26" height="20" rx="4" stroke="var(--color-premium)" strokeWidth="1.8"/>
+                    <path d="M7 13V9a7 7 0 0 1 14 0v4" stroke="var(--color-premium)" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '0.4rem' }}>
+                  {premium.filter((c: Coupon) => !c.price_try).length} Premium Kupon Daha Mevcut
+                </p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                  Tüm premium kuponlara erişmek için premium üyeliğe geç.
+                </p>
+                <a href={user ? '/odeme' : '/kayit'} style={{
+                  display: 'inline-block', fontSize: '0.88rem', fontWeight: 700,
+                  color: 'oklch(97% 0.005 255)',
+                  background: 'linear-gradient(135deg, oklch(55% 0.18 35), oklch(42% 0.15 20))',
+                  textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.75rem',
+                }}>
+                  ⭐ {user ? 'Premium Al' : 'Kayıt Ol'}
+                </a>
+              </div>
+            )}
           </div>
         )}
       </section>

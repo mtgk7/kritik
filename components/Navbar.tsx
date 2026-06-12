@@ -11,11 +11,13 @@ export default async function Navbar() {
   const isAdmin = user?.email === ADMIN_EMAIL
 
   const links = [
-    { href: '/hizmetler',        label: 'Ana Sayfa' },
-    { href: '/',                  label: 'Maçlar' },
-    { href: '/haberler',         label: 'Haberler' },
-    { href: '/kuponlar',         label: 'AI Kuponlar' },
+    { href: '/hizmetler',         label: 'Ana Sayfa' },
+    { href: '/',                   label: 'Maçlar' },
+    { href: '/sonuclar',          label: 'Sonuçlar' },
+    { href: '/haberler',          label: 'Haberler' },
+    { href: '/kuponlar',          label: 'AI Kuponlar' },
     { href: '/editor-tahminleri', label: 'Editör' },
+    { href: '/istatistikler',     label: 'İstatistikler' },
     ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
   ]
 
@@ -45,14 +47,13 @@ export default async function Navbar() {
           </a>
           <span className="nav-slogan" style={{
             fontFamily: 'var(--font-display)',
-            fontSize: '0.8rem',
-            fontWeight: 500,
+            fontSize: '1rem',
+            fontWeight: 700,
             letterSpacing: '0.06em',
-            color: 'var(--color-accent)',
             whiteSpace: 'nowrap',
-            opacity: 0.85,
           }}>
-            Tahmin değil, analiz.
+            <span style={{ color: 'var(--color-text-on-dark)' }}>TAHMİN DEĞİL, </span>
+            <span style={{ color: 'var(--color-accent)' }}>ANALİZ.</span>
           </span>
         </div>
 

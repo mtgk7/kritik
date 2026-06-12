@@ -1,6 +1,7 @@
 import { addCoupon } from '@/app/actions/admin'
 import { createClient } from '@/lib/supabase/server'
 import { Match } from '@/lib/types'
+import KuponAIOnerisi from '@/components/KuponAIOnerisi'
 
 export default async function KuponEklePage({
   searchParams,
@@ -59,6 +60,9 @@ export default async function KuponEklePage({
 
         {/* Maç seçimi */}
         <Field label={`Maçları Seç${matches?.length ? ` (${matches.length} yaklaşan maç)` : ''}`}>
+          <div style={{ marginBottom: '0.65rem' }}>
+            <KuponAIOnerisi />
+          </div>
           {!matches?.length ? (
             <p style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', padding: '0.75rem 0' }}>
               Yaklaşan maç yok.
@@ -112,6 +116,11 @@ export default async function KuponEklePage({
             <option value="false">Ücretsiz</option>
             <option value="true">Premium</option>
           </select>
+        </Field>
+
+        {/* Kupon fiyatı */}
+        <Field label="Satış Fiyatı ₺ (opsiyonel — boş bırakırsan ücretsiz/premium kapsamında)">
+          <input name="price_try" type="number" min="0" step="1" placeholder="örn: 49" style={inputStyle} />
         </Field>
 
         {/* Editör notu */}

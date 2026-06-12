@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseFetch } from '@/lib/supabase/public'
 import { notFound } from 'next/navigation'
 import { Coupon, Match } from '@/lib/types'
+import { requestCouponPurchase } from '@/app/actions/admin'
 
 const typeLabels: Record<string, string> = {
   'Banko':           'Banko',
@@ -14,26 +15,50 @@ const typeColors: Record<string, string> = {
   'Premium Sürpriz': 'var(--color-premium)',
 }
 
-export default async function KuponDetayPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function KuponDetayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ talep?: string }>
+}) {
   const { id } = await params
+  const sp = await searchParams
 
   // Kupon verisini public client ile çek
   const coupons = await supabaseFetch<Coupon>(`coupons?select=*&id=eq.${id}&limit=1`)
   const coupon = coupons[0] ?? null
   if (!coupon) notFound()
 
-  // Premium kupon → auth ile kontrol
-  if (coupon.is_premium) {
+  // Ücretli veya premium kupon → auth ile kontrol
+  if (coupon.is_premium || coupon.price_try) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: profile } = user
-      ? await supabase.from('users').select('is_premium,premium_until').eq('id', user.id).single()
-      : { data: null }
-    const premiumAktif = profile?.is_premium && profile?.premium_until
-      ? new Date(profile.premium_until) > new Date()
-      : false
-    if (!premiumAktif) {
-      return <PremiumGate />
+
+    let hasAccess = false
+
+    // Premium abonelik → is_premium kuponlara erişim
+    if (coupon.is_premium && user) {
+      const { data: profile } = await supabase
+        .from('users').select('is_premium,premium_until').eq('id', user.id).single()
+      hasAccess = !!(profile?.is_premium && profile?.premium_until && new Date(profile.premium_until) > new Date())
+    }
+
+    // Bireysel satın alma kontrolü
+    let talepBekliyor = false
+    if (!hasAccess && coupon.price_try && user) {
+      const { data: purchase } = await supabase
+        .from('coupon_purchases')
+        .select('status')
+        .eq('coupon_id', coupon.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      hasAccess = purchase?.status === 'onaylandi'
+      talepBekliyor = purchase?.status === 'bekliyor'
+    }
+
+    if (!hasAccess) {
+      return <PremiumGate coupon={coupon} user={user ?? null} talepGonderildi={talepBekliyor || sp.talep === 'gonderildi'} />
     }
   }
 
@@ -207,10 +232,18 @@ export default async function KuponDetayPage({ params }: { params: Promise<{ id:
   )
 }
 
-function PremiumGate() {
+function PremiumGate({
+  coupon,
+  user,
+  talepGonderildi,
+}: {
+  coupon: Coupon
+  user: { id: string; email?: string } | null
+  talepGonderildi: boolean
+}) {
   return (
     <main style={{ maxWidth: '480px', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '4rem', paddingBottom: '5rem', textAlign: 'center' }}>
-      <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <svg width="32" height="40" viewBox="0 0 32 40" fill="none" style={{ margin: '0 auto', display: 'block' }}>
           <rect x="1" y="16" width="30" height="23" rx="4" stroke="var(--color-premium)" strokeWidth="2"/>
           <path d="M9 16V11a7 7 0 0 1 14 0v5" stroke="var(--color-premium)" strokeWidth="2" strokeLinecap="round"/>
@@ -223,16 +256,62 @@ function PremiumGate() {
       }}>
         Premium İçerik
       </h1>
-      <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '2rem' }}>
-        Bu kupon yalnızca premium üyelere açıktır. Yüksek güven skorlu kombinasyonlara erişmek için premium üyeliğe geç.
-      </p>
-      <a href="/kayit" style={{
-        display: 'inline-block', fontSize: '0.88rem', fontWeight: 600,
-        color: 'oklch(97% 0.005 255)', background: 'var(--color-accent)',
-        textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem',
-      }}>
-        Kayıt Ol
-      </a>
+
+      {talepGonderildi ? (
+        <div style={{ padding: '1.25rem', background: 'var(--color-success-bg)', borderRadius: '10px', border: '1px solid var(--color-success)', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-success)', marginBottom: '0.3rem' }}>✓ Talebiniz alındı!</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            Ödeme talimatları için sizi en kısa sürede bilgilendireceğiz.
+          </p>
+        </div>
+      ) : coupon.price_try && user ? (
+        <>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+            Bu kuponu <strong>₺{coupon.price_try}</strong> karşılığında satın alabilirsin.
+          </p>
+          <form action={requestCouponPurchase} style={{ marginBottom: '1rem' }}>
+            <input type="hidden" name="coupon_id" value={coupon.id} />
+            <input type="hidden" name="amount_try" value={coupon.price_try} />
+            <button type="submit" style={{
+              width: '100%', padding: '0.8rem',
+              background: 'var(--color-accent)', color: 'oklch(97% 0.005 255)',
+              border: 'none', borderRadius: '8px',
+              fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer',
+            }}>
+              Satın Al · ₺{coupon.price_try}
+            </button>
+          </form>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+            Talebiniz alındıktan sonra ödeme adımı için sizi arayacağız.
+          </p>
+        </>
+      ) : coupon.price_try && !user ? (
+        <>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+            Bu kuponu satın almak için önce giriş yapman gerekiyor.
+          </p>
+          <a href={`/giris`} style={{
+            display: 'inline-block', fontSize: '0.88rem', fontWeight: 600,
+            color: 'oklch(97% 0.005 255)', background: 'var(--color-accent)',
+            textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem',
+          }}>
+            Giriş Yap
+          </a>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '2rem' }}>
+            Bu kupon yalnızca premium üyelere açıktır. Yüksek güven skorlu kombinasyonlara erişmek için premium üyeliğe geç.
+          </p>
+          <a href={user ? '/odeme' : '/kayit'} style={{
+            display: 'inline-block', fontSize: '0.88rem', fontWeight: 600,
+            color: 'oklch(97% 0.005 255)', background: 'var(--color-accent)',
+            textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem',
+          }}>
+            {user ? '⭐ Premium Al' : 'Kayıt Ol'}
+          </a>
+        </>
+      )}
     </main>
   )
 }

@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { Match, Coupon, News } from '@/lib/types'
-import { deleteMatch, deleteCoupon, deleteNews, triggerBot } from '@/app/actions/admin'
+import {
+  deleteMatch, deleteCoupon, deleteNews, triggerBot, sendWeeklyDigest,
+  approvePendingApproval, rejectPendingApproval,
+  approveCouponPurchase, rejectCouponPurchase,
+} from '@/app/actions/admin'
 
 export default async function AdminPage({
   searchParams,
@@ -18,6 +22,8 @@ export default async function AdminPage({
     { count: toplamMac }, { count: yaklasMac },
     { count: dogruTahmin }, { count: toplamTahmin },
     { count: pushAbone }, { count: bekleyenOdeme },
+    { data: pendingApprovals },
+    { data: couponPurchases },
   ] = await Promise.all([
     supabase.from('matches').select('*').order('match_time', { ascending: false }).limit(20),
     supabase.from('coupons').select('*').order('created_at', { ascending: false }).limit(10),
@@ -31,6 +37,8 @@ export default async function AdminPage({
     supabase.from('matches').select('*', { count: 'exact', head: true }).not('prediction_correct', 'is', null),
     supabase.from('push_subscriptions').select('*', { count: 'exact', head: true }),
     supabase.from('pending_approvals').select('*', { count: 'exact', head: true }),
+    supabase.from('pending_approvals').select('*').order('created_at', { ascending: false }),
+    supabase.from('coupon_purchases').select('*').eq('status', 'bekliyor').order('created_at', { ascending: false }),
   ])
 
   const isabetOrani = toplamTahmin ? Math.round(((dogruTahmin ?? 0) / toplamTahmin) * 100) : null
@@ -76,7 +84,16 @@ export default async function AdminPage({
         <AdminBtn href="/admin/kupon-ekle" label="+ Kupon Ekle" />
         <AdminBtn href="/admin/haber-ekle" label="+ Haber Ekle" />
         <AdminBtn href="/admin/kullanicilar" label="Kullanıcılar" />
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+          <form action={sendWeeklyDigest}>
+            <button type="submit" style={{
+              padding: '0.5rem 1rem', fontSize: '0.82rem', fontWeight: 600,
+              background: 'var(--color-surface-2)', color: 'var(--color-text-primary)',
+              border: '1px solid var(--color-border)', borderRadius: '7px', cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}>
+              ✉ Haftalık Özet
+            </button>
+          </form>
           <form action={triggerBot}>
             <button type="submit" style={{
               padding: '0.5rem 1rem', fontSize: '0.82rem', fontWeight: 600,
@@ -90,6 +107,97 @@ export default async function AdminPage({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3.5rem' }}>
+
+        {/* Bekleyen Ödemeler */}
+        {(pendingApprovals?.length ?? 0) > 0 && (
+          <section>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-warning)', marginBottom: '0.75rem' }}>
+              ⚠ Bekleyen Ödemeler ({pendingApprovals!.length})
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, border: '1.5px solid var(--color-warning)', borderRadius: '10px', overflow: 'hidden' }}>
+              {pendingApprovals!.map((p: { id: string; user_id: string; email: string; days: number; amount_try: number | null; created_at: string }, i: number) => (
+                <div key={p.id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto auto auto',
+                  gap: '0.75rem', padding: '0.85rem 1rem', alignItems: 'center',
+                  borderBottom: i === pendingApprovals!.length - 1 ? 'none' : '1px solid var(--color-border)',
+                  background: 'var(--color-base)',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{p.email}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginTop: '0.1rem' }}>
+                      {new Date(p.created_at).toLocaleDateString('tr-TR')} · {p.days} gün
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-success)', whiteSpace: 'nowrap' }}>
+                    {p.amount_try ? `₺${p.amount_try}` : '—'}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap' }}>
+                    {p.days} gün premium
+                  </span>
+                  <form action={approvePendingApproval}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="user_id" value={p.user_id} />
+                    <input type="hidden" name="days" value={p.days} />
+                    <input type="hidden" name="email" value={p.email} />
+                    <button type="submit" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'oklch(97% 0.005 255)', background: 'var(--color-success)', border: 'none', borderRadius: '6px', padding: '0.35rem 0.75rem', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+                      ✓ Onayla
+                    </button>
+                  </form>
+                  <form action={rejectPendingApproval}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="email" value={p.email} />
+                    <button type="submit" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-accent)', background: 'none', border: '1px solid var(--color-accent)', borderRadius: '6px', padding: '0.35rem 0.75rem', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+                      ✗ Reddet
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Bekleyen Kupon Talepleri */}
+        {(couponPurchases?.length ?? 0) > 0 && (
+          <section>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-warning)', marginBottom: '0.75rem' }}>
+              🛒 Kupon Talepleri ({couponPurchases!.length})
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, border: '1.5px solid var(--color-border)', borderRadius: '10px', overflow: 'hidden' }}>
+              {couponPurchases!.map((p: { id: string; coupon_id: string; email: string; amount_try: number; created_at: string }, i: number) => (
+                <div key={p.id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto auto',
+                  gap: '0.75rem', padding: '0.85rem 1rem', alignItems: 'center',
+                  borderBottom: i === couponPurchases!.length - 1 ? 'none' : '1px solid var(--color-border)',
+                  background: 'var(--color-base)',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{p.email}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginTop: '0.1rem' }}>
+                      {new Date(p.created_at).toLocaleDateString('tr-TR')} · Kupon: {p.coupon_id.slice(0, 8)}…
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-success)', whiteSpace: 'nowrap' }}>
+                    ₺{p.amount_try}
+                  </span>
+                  <form action={approveCouponPurchase}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="email" value={p.email} />
+                    <button type="submit" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'oklch(97% 0.005 255)', background: 'var(--color-success)', border: 'none', borderRadius: '6px', padding: '0.35rem 0.75rem', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+                      ✓ Onayla
+                    </button>
+                  </form>
+                  <form action={rejectCouponPurchase}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="email" value={p.email} />
+                    <button type="submit" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-accent)', background: 'none', border: '1px solid var(--color-accent)', borderRadius: '6px', padding: '0.35rem 0.75rem', cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
+                      ✗ Reddet
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Son Maçlar */}
         <section>

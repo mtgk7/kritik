@@ -13,21 +13,23 @@ export const metadata = meta('Maçlar', 'Yaklaşan maçların xG, form ve güven
 
 export default async function HomePage() {
   const [matches, latestNews] = await Promise.all([
-    supabaseFetch<Match>('matches?select=*&order=match_time.asc', CACHE.MATCHES),
+    supabaseFetch<Match>('matches?select=*&status=neq.bitti&order=match_time.asc', CACHE.MATCHES),
     supabaseFetch<News>('news?select=*&is_published=eq.true&order=published_at.desc&limit=8', CACHE.NEWS),
   ])
 
   let isPremium = false
+  let favTeams: string[] = []
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const { data: profile } = await supabase
         .from('users')
-        .select('is_premium,premium_until')
+        .select('is_premium,premium_until,notif_teams')
         .eq('id', user.id)
         .single()
       isPremium = !!(profile?.is_premium && profile?.premium_until && new Date(profile.premium_until) > new Date())
+      favTeams  = profile?.notif_teams ?? []
     }
   } catch {}
 
@@ -55,12 +57,12 @@ export default async function HomePage() {
             <EmptyState />
           ) : (
             <>
-              <MatchListClient matches={matches} isPremium={isPremium} />
+              <MatchListClient matches={matches} isPremium={isPremium} favTeams={favTeams} />
               <div style={{ marginTop: '2.5rem' }}>
                 <AdSlot
                   slot={process.env.NEXT_PUBLIC_AD_SLOT_FEED ?? ''}
-                  format="horizontal"
-                  style={{ minHeight: '90px', background: 'var(--color-surface-2)', borderRadius: '8px' }}
+                  format="fluid"
+                  layoutKey="-fb+5w+4e-db+86"
                 />
               </div>
             </>
@@ -73,8 +75,7 @@ export default async function HomePage() {
             <NewsSidebar news={latestNews} />
             <AdSlot
               slot={process.env.NEXT_PUBLIC_AD_SLOT_SIDEBAR ?? ''}
-              format="rectangle"
-              style={{ minHeight: '250px', background: 'var(--color-surface-2)', borderRadius: '8px' }}
+              format="autorelaxed"
             />
           </div>
         )}

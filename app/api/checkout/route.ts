@@ -9,6 +9,11 @@ function getStripe() {
 }
 
 const PLANS: Record<string, { priceId: string; days: number; label: string }> = {
+  weekly: {
+    priceId: process.env.STRIPE_PRICE_WEEKLY!,
+    days:    7,
+    label:   'Haftalık Premium',
+  },
   monthly: {
     priceId: process.env.STRIPE_PRICE_MONTHLY!,
     days:    30,

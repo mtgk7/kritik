@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { answerCallbackQuery, editTelegramMessage } from '@/lib/telegram'
 
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN
+
 function getServiceClient() {
   return createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,14 +11,48 @@ function getServiceClient() {
   )
 }
 
+async function sendBotMessage(chatId: number, text: string) {
+  if (!TOKEN) return
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+  }).catch(() => {})
+}
+
 export async function POST(req: Request) {
-  // Telegram webhook secret token doğrulaması
   const secret = req.headers.get('x-telegram-bot-api-secret-token')
   if (secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = await req.json()
+
+  // /start TOKEN mesajı → kullanıcı hesap bağlama
+  const message = body.message
+  if (message?.text) {
+    const text = (message.text as string).trim()
+    if (text.startsWith('/start ')) {
+      const token = text.slice(7).trim()
+      const chatId = message.chat.id as number
+      if (token) {
+        const supabase = getServiceClient()
+        const { data: found } = await supabase
+          .from('users')
+          .select('id')
+          .eq('telegram_verify_token', token)
+          .maybeSingle()
+        if (found) {
+          await supabase.from('users').update({ telegram_chat_id: chatId, telegram_verify_token: null }).eq('id', found.id)
+          await sendBotMessage(chatId, '✅ <b>Telegram bildirimler aktif!</b>\n\nKritik hesabın başarıyla bağlandı. Yeni kupon ve yüksek güven maçları için bildirim alacaksın.')
+        } else {
+          await sendBotMessage(chatId, '❌ Geçersiz veya süresi dolmuş kod.\n\nProfil sayfandan yeni bir bağlantı linki al.')
+        }
+      }
+    }
+    return NextResponse.json({ ok: true })
+  }
+
   const query = body.callback_query
   if (!query) return NextResponse.json({ ok: true })
 

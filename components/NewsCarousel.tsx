@@ -135,7 +135,7 @@ export default function NewsCarousel({ news }: { news: News[] }) {
                       {item.summary}
                     </p>
                   )}
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>{time}</span>
+                  <span suppressHydrationWarning style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>{time}</span>
                 </div>
               </a>
             )

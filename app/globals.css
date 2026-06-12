@@ -208,7 +208,7 @@ body {
   .nav-desktop        { display: none !important; }
   .nav-mobile-actions { display: flex !important; }
   .nav-hamburger      { display: flex; }
-  .nav-slogan         { display: none !important; }
+  .nav-slogan         { display: inline !important; }
 }
 
 .mobile-nav-overlay {

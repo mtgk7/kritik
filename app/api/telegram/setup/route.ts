@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     body: JSON.stringify({
       url: `${BASE_URL}/api/telegram`,
       secret_token: WEBHOOK_SECRET,
-      allowed_updates: ['callback_query'],
+      allowed_updates: ['message', 'callback_query'],
     }),
   })
 

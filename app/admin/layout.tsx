@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/giris')
+  if (!user) redirect('/giris?sonra=admin')
   if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(user.email ?? '')) redirect('/')
 
   return <>{children}</>

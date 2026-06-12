@@ -52,7 +52,13 @@ export default async function GirisPage({
           </button>
         </form>
 
-        <p style={{ marginTop: '1.5rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
+        <p style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
+          <a href="/sifremi-unuttum" style={{ color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>
+            Şifremi unuttum
+          </a>
+        </p>
+
+        <p style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
           Hesabın yok mu?{' '}
           <a href="/kayit" style={{ color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }}>
             Kayıt Ol

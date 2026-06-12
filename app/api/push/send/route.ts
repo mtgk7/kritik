@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAILS ?? ''
-
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_SUBJECT}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-)
-
 export async function POST(req: Request) {
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return NextResponse.json({ error: 'VAPID keys missing' }, { status: 500 })
+  }
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_SUBJECT ?? 'admin@kritik.app'}`,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  )
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.ALGORITHM_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

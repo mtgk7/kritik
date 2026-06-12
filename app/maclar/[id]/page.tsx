@@ -1,17 +1,53 @@
 import { supabaseFetch } from '@/lib/supabase/public'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { Match, Last5Data } from '@/lib/types'
+import type { Metadata } from 'next'
+import { Match, Last5Data, MatchOdds } from '@/lib/types'
 import LiveScoreClient from '@/components/LiveScoreClient'
 import ShareButtons from '@/components/ShareButtons'
 import { toggleFavorite } from '@/app/actions/favorites'
+import { translateTeam } from '@/lib/team-names'
+import OzelAnalizClient from '@/components/OzelAnalizClient'
+import AdSlot from '@/components/AdSlot'
+
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const rows = await supabaseFetch<Match>(`matches?select=home_team,away_team,match_time,league_name,confidence_score,prediction&id=eq.${id}&limit=1`)
+  const m = rows[0]
+  if (!m) return {}
+  const conf   = m.confidence_score ? ` · %${Math.round(m.confidence_score * 100)} güven` : ''
+  const pred   = m.prediction ? ` · Tahmin: ${m.prediction}` : ''
+  const title  = `${m.home_team} vs ${m.away_team} — Kritik`
+  const desc   = `${m.league_name ?? ''}${conf}${pred} · AI destekli maç analizi`
+  const ogImg  = `${SITE}/icon-512.png`
+  return {
+    title,
+    description: desc,
+    openGraph: {
+      title, description: desc, url: `${SITE}/maclar/${id}`, type: 'website',
+      images: [{ url: ogImg, width: 512, height: 512, alt: title }],
+    },
+    twitter: { card: 'summary', title, description: desc, images: [ogImg] },
+  }
+}
 
 export default async function MacDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  const rows = await supabaseFetch<Match>(`matches?select=*&id=eq.${id}&limit=1`)
+  const [rows, oddsRows] = await Promise.all([
+    supabaseFetch<Match>(`matches?select=*&id=eq.${id}&limit=1`),
+    supabaseFetch<MatchOdds>(`match_odds?select=*&match_id=eq.${id}&order=scraped_at.desc&limit=9`),
+  ])
   const m = rows[0] ?? null
   if (!m) notFound()
+
+  // Her kaynak için en güncel oranı al
+  const latestOdds: Partial<Record<string, MatchOdds>> = {}
+  for (const o of oddsRows) {
+    if (!latestOdds[o.source]) latestOdds[o.source] = o
+  }
 
   // Premium erişim kontrolü: vitrin maçı herkese açık, değilse premium üyelik gerekir
   let isPremium = false
@@ -29,14 +65,19 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   } catch {}
   const unlocked = m.is_free_preview || isPremium
 
-  // Favori kontrolü
+  // Favori + mevcut özel analiz kontrolü
   let isFavorite = false
+  let existingAnalysis: string | null = null
   try {
     const supabase2 = await createClient()
     const { data: { user: u2 } } = await supabase2.auth.getUser()
     if (u2) {
-      const { data: fav } = await supabase2.from('favorites').select('id').eq('user_id', u2.id).eq('match_id', m.id).single()
+      const { data: fav } = await supabase2.from('favorites').select('id').eq('user_id', u2.id).eq('match_id', m.id).maybeSingle()
       isFavorite = !!fav
+      if (isPremium) {
+        const { data: ar } = await supabase2.from('match_analysis_requests').select('analysis').eq('user_id', u2.id).eq('match_id', m.id).maybeSingle()
+        existingAnalysis = ar?.analysis ?? null
+      }
     }
   } catch {}
 
@@ -79,8 +120,23 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
     ? m.analysis.split(/\.\s+/).filter(s => s.trim().length > 10).map(s => s.trim().endsWith('.') ? s.trim() : s.trim() + '.')
     : []
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SportsEvent',
+    name: `${m.home_team} vs ${m.away_team}`,
+    startDate: m.match_time,
+    url: `${siteUrl}/maclar/${m.id}`,
+    location: { '@type': 'Place', name: m.league_name ?? 'Futbol' },
+    competitor: [
+      { '@type': 'SportsTeam', name: m.home_team },
+      { '@type': 'SportsTeam', name: m.away_team },
+    ],
+    ...(hasScore ? { result: `${m.home_score}–${m.away_score}` } : {}),
+  }
+
   return (
     <main style={{ maxWidth: '760px', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2rem', paddingBottom: '5rem' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <a href="/" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
@@ -123,9 +179,9 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
           fontSize: 'clamp(1.4rem, 5.5vw, 3.5rem)', letterSpacing: '0.03em',
           textTransform: 'uppercase', color: 'var(--color-text-primary)', lineHeight: 1.05, marginBottom: '1rem',
         }}>
-          {m.home_team}
+          {translateTeam(m.home_team)}
           <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 600, fontSize: '0.6em', margin: '0 0.5rem' }}>vs</span>
-          {m.away_team}
+          {translateTeam(m.away_team)}
         </h1>
 
         {/* Skor — canlı veya bitmiş (Realtime güncellenir) */}
@@ -460,6 +516,30 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         {!unlocked && <PremiumGate />}
       </div>
 
+      {/* ── Piyasa Oranları ─────────────────────────────────────────────── */}
+      {Object.keys(latestOdds).length > 0 && !isFinished && (
+        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+          <OranlarTablosu odds={latestOdds} prediction={unlocked ? m.prediction : null} />
+        </div>
+      )}
+
+      {/* Özel AI Analizi */}
+      <OzelAnalizClient
+        matchId={m.id}
+        homeTeam={translateTeam(m.home_team)}
+        awayTeam={translateTeam(m.away_team)}
+        isPremium={isPremium}
+        initialAnalysis={existingAnalysis}
+      />
+
+      {/* Reklam */}
+      <AdSlot
+        slot={process.env.NEXT_PUBLIC_AD_SLOT_MAC_DETAY ?? ''}
+        format="fluid"
+        layout="in-article"
+        style={{ margin: '2rem 0', textAlign: 'center' }}
+      />
+
       {/* SofaScore detaylı analiz linki */}
       {true && (
         <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
@@ -705,6 +785,93 @@ function CompareBar({
         <div style={{ width: `${leftPct}%`, background: color, borderRadius: '99px 0 0 99px', transition: 'width 0.4s ease' }} />
         <div style={{ flex: 1, background: 'var(--color-border-strong)', borderRadius: '0 99px 99px 0' }} />
       </div>
+    </div>
+  )
+}
+
+const SOURCE_LABELS: Record<string, string> = { iddaa: 'İddaa', misli: 'Misli', nesine: 'Nesine' }
+const SOURCES = ['iddaa', 'misli', 'nesine'] as const
+
+type OddsKey = 'ms1' | 'x' | 'ms2' | 'over25' | 'under25' | 'kg_var' | 'kg_yok'
+type OranRow = { key: OddsKey; label: string; isPred: boolean }
+
+function OranlarTablosu({
+  odds,
+  prediction,
+}: {
+  odds: Partial<Record<string, MatchOdds>>
+  prediction: string | null
+}) {
+  const pred = prediction?.toLowerCase() ?? ''
+  const available = SOURCES.filter(s => odds[s])
+
+  if (available.length === 0) return null
+
+  const ALL_ROWS: OranRow[] = [
+    { key: 'ms1',     label: 'MS1',        isPred: pred === 'ms1' },
+    { key: 'x',       label: 'Beraberlik', isPred: pred === 'x' },
+    { key: 'ms2',     label: 'MS2',        isPred: pred === 'ms2' },
+    { key: 'over25',  label: '2.5 Üst',    isPred: pred.includes('üst') },
+    { key: 'under25', label: '2.5 Alt',    isPred: pred.includes('alt') },
+    { key: 'kg_var',  label: 'KG Var',     isPred: pred.includes('kg var') },
+    { key: 'kg_yok',  label: 'KG Yok',     isPred: pred.includes('kg yok') },
+  ]
+  const rows = ALL_ROWS.filter(r => available.some(s => (odds[s] as Record<string, unknown>)?.[r.key] != null))
+
+  return (
+    <div>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.88rem', letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.85rem' }}>
+        Piyasa Oranları
+      </h2>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem 0.5rem 0', color: 'var(--color-text-tertiary)', fontWeight: 600, fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>
+                Bahis
+              </th>
+              {available.map(s => (
+                <th key={s} style={{ textAlign: 'center', padding: '0.5rem 0.75rem', color: 'var(--color-text-tertiary)', fontWeight: 600, fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>
+                  {SOURCE_LABELS[s]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ key, label, isPred }) => {
+              const vals = available.map(s => Number((odds[s] as Record<string, unknown>)?.[key] ?? 0)).filter(v => v > 0)
+              const maxVal = vals.length ? Math.max(...vals) : 0
+              return (
+                <tr key={key} style={{ background: isPred ? 'var(--color-success-bg)' : undefined }}>
+                  <td style={{ padding: '0.6rem 0.75rem 0.6rem 0', fontWeight: isPred ? 700 : 500, color: isPred ? 'var(--color-success)' : 'var(--color-text-primary)', borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>
+                    {label}
+                    {isPred && <span style={{ marginLeft: '0.4rem', fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-success)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>← Tahmin</span>}
+                  </td>
+                  {available.map(s => {
+                    const val = Number((odds[s] as Record<string, unknown>)?.[key] ?? 0)
+                    const isBest = val > 0 && val === maxVal && vals.length > 1
+                    return (
+                      <td key={s} style={{
+                        textAlign: 'center', padding: '0.6rem 0.75rem',
+                        fontFamily: 'var(--font-display)', fontWeight: isBest ? 700 : 500,
+                        fontSize: isBest ? '0.95rem' : '0.88rem',
+                        color: isBest ? 'var(--color-success)' : val > 0 ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                        borderBottom: '1px solid var(--color-border)',
+                      }}>
+                        {val > 0 ? val.toFixed(2) : '—'}
+                        {isBest && <span style={{ fontSize: '0.55rem', verticalAlign: 'super', marginLeft: '0.15rem', color: 'var(--color-success)' }}>▲</span>}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ fontSize: '0.65rem', color: 'var(--color-text-tertiary)', marginTop: '0.6rem' }}>
+        ▲ En yüksek oran · Tahmin etiketi yalnızca premium üyelere gösterilir
+      </p>
     </div>
   )
 }

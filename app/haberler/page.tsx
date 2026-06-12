@@ -1,6 +1,7 @@
 import { supabaseFetch } from '@/lib/supabase/public'
 import { News } from '@/lib/types'
 import { meta } from '@/lib/metadata'
+import AdSlot from '@/components/AdSlot'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -88,6 +89,13 @@ export default async function HaberlerPage() {
               )}
             </div>
           )}
+
+          {/* Reklam */}
+          <AdSlot
+            slot={process.env.NEXT_PUBLIC_AD_SLOT_HABERLER ?? ''}
+            format="horizontal"
+            style={{ margin: '1.5rem 0', minHeight: '90px', borderRadius: '8px', overflow: 'hidden' }}
+          />
 
           {/* ── Kategori bölümleri ──────────────────────────────────── */}
           {sports.map(sport => {

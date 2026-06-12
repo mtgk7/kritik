@@ -56,7 +56,8 @@ export async function signUp(formData: FormData) {
     await supabase.auth.signInWithPassword({ email, password })
   }
 
-  return redirect('/odeme')
+  const plan = (formData.get('plan') as string) || 'free'
+  return redirect(plan !== 'free' ? '/odeme' : '/hosgeldin')
 }
 
 export async function signIn(formData: FormData) {
@@ -69,11 +70,39 @@ export async function signIn(formData: FormData) {
 
   if (error) return redirect(`/giris?error=${encodeURIComponent(error.message)}`)
 
-  return redirect(sonra === 'odeme' ? '/odeme' : '/')
+  const redirectMap: Record<string, string> = {
+    odeme: '/odeme',
+    admin: '/admin',
+    profil: '/profil',
+  }
+  return redirect(sonra && redirectMap[sonra] ? redirectMap[sonra] : '/')
 }
 
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   return redirect('/giris')
+}
+
+export async function sendPasswordReset(formData: FormData) {
+  const supabase = await createClient()
+  const email = formData.get('email') as string
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth/reset-callback`,
+  })
+
+  if (error) return redirect(`/sifremi-unuttum?error=${encodeURIComponent(error.message)}`)
+  return redirect('/sifremi-unuttum?gonderildi=1')
+}
+
+export async function updatePassword(formData: FormData) {
+  const supabase = await createClient()
+  const password = formData.get('password') as string
+
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) return redirect(`/sifremi-unuttum/yenile?error=${encodeURIComponent(error.message)}`)
+  return redirect('/giris?mesaj=Şifren güncellendi. Giriş yapabilirsin.')
 }
