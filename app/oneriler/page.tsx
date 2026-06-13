@@ -50,7 +50,7 @@ export default async function KuponlarPage() {
       </div>
 
       {/* AI Kupon Builder CTA */}
-      <a href="/ai-kupon" style={{ display: 'block', textDecoration: 'none', marginBottom: '2rem' }}>
+      <a href="/ai-oneri" style={{ display: 'block', textDecoration: 'none', marginBottom: '2rem' }}>
         <div style={{
           padding: '1.1rem 1.5rem',
           borderRadius: '12px',
@@ -327,7 +327,7 @@ function CouponRow({ coupon, isLast, locked }: { coupon: Coupon; isLast: boolean
 
   if (locked) return inner
   return (
-    <a href={`/kuponlar/${coupon.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+    <a href={`/oneriler/${coupon.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
       {inner}
     </a>
   )
@@ -392,7 +392,7 @@ function EditorCouponRow({ coupon, isLast, locked }: { coupon: Coupon; isLast: b
 
   if (locked) return inner
   return (
-    <a href={`/kuponlar/${coupon.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+    <a href={`/oneriler/${coupon.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
       {inner}
     </a>
   )

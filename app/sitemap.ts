@@ -10,7 +10,7 @@ export default async function sitemap() {
     supabaseFetch<News>('news?select=id,published_at&is_published=eq.true'),
   ])
 
-  const statics = ['', '/haberler', '/kuponlar', '/hizmetler'].map(path => ({
+  const statics = ['', '/haberler', '/oneriler', '/hizmetler'].map(path => ({
     url: `${BASE}${path}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
@@ -25,7 +25,7 @@ export default async function sitemap() {
   }))
 
   const couponPages = coupons.map(c => ({
-    url: `${BASE}/kuponlar/${c.id}`,
+    url: `${BASE}/oneriler/${c.id}`,
     lastModified: new Date(c.created_at),
     changeFrequency: 'daily' as const,
     priority: 0.6,

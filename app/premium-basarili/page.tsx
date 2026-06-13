@@ -14,7 +14,7 @@ export default function PremiumBasariliPage() {
         Ödemen alındı. Yüksek güven skorlu kombinasyon önerilerine ve tüm premium analizlere artık erişimin var.
       </p>
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <a href="/kuponlar" style={{
+        <a href="/oneriler" style={{
           fontSize: '0.88rem', fontWeight: 600,
           color: 'oklch(97% 0.005 255)', background: 'var(--color-accent)',
           textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem',

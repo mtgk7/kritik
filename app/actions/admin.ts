@@ -353,7 +353,7 @@ export async function requestCouponPurchase(formData: FormData) {
     )
   }
 
-  return redirect(`/kuponlar/${coupon_id}?talep=gonderildi`)
+  return redirect(`/oneriler/${coupon_id}?talep=gonderildi`)
 }
 
 export async function sendWeeklyDigest() {
