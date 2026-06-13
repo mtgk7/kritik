@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { sendTelegram } from '@/lib/telegram'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const TO     = 'info@kritikanaliz.com'
@@ -17,6 +18,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await sendTelegram(
+      `📬 <b>Yeni İletişim Formu</b>\n` +
+      `👤 ${ad}\n` +
+      `✉️ ${eposta}\n` +
+      `📌 ${konu}\n\n` +
+      `${mesaj.trim().slice(0, 300)}${mesaj.trim().length > 300 ? '…' : ''}`
+    )
+
     await resend.emails.send({
       from: FROM,
       to: TO,
