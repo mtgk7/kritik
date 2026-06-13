@@ -6,7 +6,7 @@ import AdSlot from '@/components/AdSlot'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-export const metadata = meta('Kuponlar', 'Algoritmanın ürettiği ücretsiz ve premium kombinasyon kuponları.')
+export const metadata = meta('Öneriler', 'Algoritmanın ürettiği ücretsiz ve premium kombinasyon önerileri.')
 
 export default async function KuponlarPage() {
   const supabase = await createClient()
@@ -39,7 +39,7 @@ export default async function KuponlarPage() {
           lineHeight: 1,
           marginBottom: '0.4rem',
         }}>
-          Kuponlar
+          Öneriler
         </h1>
         <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
           Algoritmanın ürettiği kombinasyon önerileri
@@ -62,11 +62,11 @@ export default async function KuponlarPage() {
           <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🤖</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.15rem' }}>
-              AI ile Kupon Oluştur
+              AI ile Öneri Al
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
               {isPremium
-                ? 'Güven eşiği, lig ve maç sayısı seç — AI kişisel kuponunu hazırlasın'
+                ? 'Güven eşiği, lig ve maç sayısı seç — AI kişisel önerini hazırlasın'
                 : 'Premium üyelere özel · Kendi kriterlerinle AI destekli kombinasyon'}
             </div>
           </div>
@@ -82,11 +82,11 @@ export default async function KuponlarPage() {
             fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem',
             letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-primary)',
           }}>
-            AI Hazır Kuponlar
+            AI Önerileri
           </h2>
         </div>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', paddingLeft: '1.6rem' }}>
-          Algoritmanın xG ve form analizine göre ürettiği kuponlar
+          Algoritmanın xG ve form analizine göre ürettiği öneriler
         </p>
       </div>
 
@@ -94,7 +94,7 @@ export default async function KuponlarPage() {
       <section style={{ marginBottom: '3rem' }}>
         <SectionLabel>Ücretsiz</SectionLabel>
         {free.length === 0 ? (
-          <EmptySection text="Henüz ücretsiz kupon yok." />
+          <EmptySection text="Henüz ücretsiz öneri yok." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {free.map((c: Coupon, i: number) => (
@@ -120,7 +120,7 @@ export default async function KuponlarPage() {
         </div>
 
         {premium.length === 0 ? (
-          <EmptySection text="Premium kupon henüz eklenmedi." />
+          <EmptySection text="Premium öneri henüz eklenmedi." />
         ) : isPremium ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {premium.map((c: Coupon, i: number) => (
@@ -183,10 +183,10 @@ export default async function KuponlarPage() {
                   </svg>
                 </div>
                 <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '0.4rem' }}>
-                  {premium.filter((c: Coupon) => !c.price_try).length} Premium Kupon Daha Mevcut
+                  {premium.filter((c: Coupon) => !c.price_try).length} Premium Öneri Daha Mevcut
                 </p>
                 <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                  Tüm premium kuponlara erişmek için premium üyeliğe geç.
+                  Tüm premium önerilere erişmek için premium üyeliğe geç.
                 </p>
                 <a href={user ? '/odeme' : '/kayit'} style={{
                   display: 'inline-block', fontSize: '0.88rem', fontWeight: 700,

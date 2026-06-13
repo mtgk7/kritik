@@ -81,7 +81,7 @@ export default async function KuponDetayPage({
     <main style={{ maxWidth: '720px', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2rem', paddingBottom: '5rem' }}>
 
       <a href="/kuponlar" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none', display: 'inline-block', marginBottom: '2rem' }}>
-        ← Kuponlar
+        ← Öneriler
       </a>
 
       {/* Başlık */}
@@ -267,7 +267,7 @@ function PremiumGate({
       ) : coupon.price_try && user ? (
         <>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-            Bu kuponu <strong>₺{coupon.price_try}</strong> karşılığında satın alabilirsin.
+            Bu öneriyi <strong>₺{coupon.price_try}</strong> karşılığında satın alabilirsin.
           </p>
           <form action={requestCouponPurchase} style={{ marginBottom: '1rem' }}>
             <input type="hidden" name="coupon_id" value={coupon.id} />
@@ -288,7 +288,7 @@ function PremiumGate({
       ) : coupon.price_try && !user ? (
         <>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-            Bu kuponu satın almak için önce giriş yapman gerekiyor.
+            Bu öneriyi satın almak için önce giriş yapman gerekiyor.
           </p>
           <a href={`/giris`} style={{
             display: 'inline-block', fontSize: '0.88rem', fontWeight: 600,
@@ -301,7 +301,7 @@ function PremiumGate({
       ) : (
         <>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '2rem' }}>
-            Bu kupon yalnızca premium üyelere açıktır. Yüksek güven skorlu kombinasyonlara erişmek için premium üyeliğe geç.
+            Bu öneri yalnızca premium üyelere açıktır. Yüksek güven skorlu kombinasyonlara erişmek için premium üyeliğe geç.
           </p>
           <a href={user ? '/odeme' : '/kayit'} style={{
             display: 'inline-block', fontSize: '0.88rem', fontWeight: 600,

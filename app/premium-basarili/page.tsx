@@ -11,7 +11,7 @@ export default function PremiumBasariliPage() {
         Premium Aktif!
       </h1>
       <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: 1.65, marginBottom: '2rem' }}>
-        Ödemen alındı. Yüksek güven skorlu kombinasyon kuponlarına ve tüm premium analizlere artık erişimin var.
+        Ödemen alındı. Yüksek güven skorlu kombinasyon önerilerine ve tüm premium analizlere artık erişimin var.
       </p>
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <a href="/kuponlar" style={{
@@ -19,7 +19,7 @@ export default function PremiumBasariliPage() {
           color: 'oklch(97% 0.005 255)', background: 'var(--color-accent)',
           textDecoration: 'none', borderRadius: '8px', padding: '0.65rem 1.5rem',
         }}>
-          Kuponları Gör →
+          Önerileri Gör →
         </a>
         <a href="/profil" style={{
           fontSize: '0.88rem', fontWeight: 600,

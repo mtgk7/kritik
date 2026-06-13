@@ -83,7 +83,7 @@ export default async function OdemePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               {[
                 'Tüm maçlara sınırsız AI analizi',
-                'Yüksek güven skorlu premium kuponlar',
+                'Yüksek güven skorlu premium öneriler',
                 'xG, form ve sakatlık raporları',
               ].map(item => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>

@@ -40,13 +40,13 @@ export default function HosgeldinPage() {
           />
           <FeatureItem
             icon="🤖"
-            title="AI Kuponlar (Premium)"
-            desc="Güven eşiği ve lig seçerek algoritmanın ürettiği kişisel kombinasyon kuponları — premium üyelere özel."
+            title="AI Önerileri (Premium)"
+            desc="Güven eşiği ve lig seçerek algoritmanın ürettiği kişisel kombinasyon önerileri — premium üyelere özel."
           />
           <FeatureItem
             icon="⭐"
-            title="Premium: Editör Tahminleri"
-            desc="Yüksek güven skorlu maçlar ve özel kuponlar için premium üye ol."
+            title="Premium: Editör Önerileri"
+            desc="Yüksek güven skorlu maçlar ve özel öneriler için premium üye ol."
           />
         </div>
 

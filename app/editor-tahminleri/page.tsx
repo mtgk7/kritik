@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-export const metadata = meta('Editör Tahminleri', 'Editörlerimizin özenle hazırladığı kupon önerileri ve analizleri.')
+export const metadata = meta('Editör Önerileri', 'Editörlerimizin özenle hazırladığı analizler ve öneriler.')
 
 const typeLabels: Record<string, string> = {
   'Banko':           'Banko',
@@ -64,14 +64,14 @@ export default async function EditorTahminleriPage() {
             textTransform: 'uppercase', color: 'var(--color-text-primary)',
             lineHeight: 1.05, marginBottom: '0.75rem',
           }}>
-            Editör Tahminleri
+            Editör Önerileri
           </h1>
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.65, marginBottom: '2rem' }}>
-            Editörlerimizin özenle hazırladığı kupon önerileri ve analizleri yalnızca premium üyelere özeldir.
+            Editörlerimizin özenle hazırladığı analizler ve öneriler yalnızca premium üyelere özeldir.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem', textAlign: 'left' }}>
             {[
-              'Editörden günlük kupon seçkileri',
+              'Editörden günlük seçkiler',
               'xG ve form bazlı derin analizler',
               'Haftalık isabet istatistikleri',
             ].map(item => (
@@ -118,11 +118,11 @@ export default async function EditorTahminleriPage() {
             textTransform: 'uppercase', color: 'var(--color-premium)',
             lineHeight: 1,
           }}>
-            Editör Tahminleri
+            Editör Önerileri
           </h1>
         </div>
         <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-          Editörlerimizin özenle seçtiği kupon önerileri ve yorumları
+          Editörlerimizin özenle seçtiği analizler ve öneriler
         </p>
       </div>
 

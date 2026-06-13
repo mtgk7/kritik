@@ -157,7 +157,7 @@ export default async function ProfilPage({
               Premium üyeliğin aktif
             </p>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
-              Tüm premium kupona ve analizlere erişimin var.
+              Tüm premium önerilere ve analizlere erişimin var.
             </p>
           </div>
         </div>
@@ -198,11 +198,11 @@ export default async function ProfilPage({
             Premium'a Geç
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
-            Yüksek güven skorlu kombinasyon kuponlarına, detaylı xG analizlerine
+            Yüksek güven skorlu kombinasyon önerilerine, detaylı xG analizlerine
             ve sakatlık alarmlarına tam erişim sağla.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem' }}>
-            {['Premium kuponlara tam erişim', 'Günlük yüksek güven analizleri', 'Sakatlık ve ceza alarmları'].map(item => (
+            {['Premium önerilere tam erişim', 'Günlük yüksek güven analizleri', 'Sakatlık ve ceza alarmları'].map(item => (
               <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
                 <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--color-premium)', flexShrink: 0 }} />
                 {item}

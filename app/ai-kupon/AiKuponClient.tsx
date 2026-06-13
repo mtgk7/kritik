@@ -142,7 +142,7 @@ export default function AiKuponClient() {
           {/* Maç Sayısı */}
           <div>
             <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.6rem' }}>
-              Kupondaki Maç Sayısı
+              Önerideki Maç Sayısı
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {COUNT_OPTIONS.map(n => (
@@ -182,7 +182,7 @@ export default function AiKuponClient() {
             transition: 'opacity 0.15s',
           }}
         >
-          {loading ? '⏳ Analiz yapılıyor...' : '🤖 Kupon Oluştur'}
+          {loading ? '⏳ Analiz yapılıyor...' : '🤖 Öneri Oluştur'}
         </button>
       </div>
 
@@ -200,7 +200,7 @@ export default function AiKuponClient() {
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.2rem' }}>
-                AI Kupon — {result.criteria.count} maç · {result.criteria.league}
+                AI Öneri — {result.criteria.count} maç · {result.criteria.league}
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-success)', letterSpacing: '-0.02em' }}>

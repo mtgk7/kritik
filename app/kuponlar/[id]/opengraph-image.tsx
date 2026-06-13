@@ -61,7 +61,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 48, fontWeight: 700, color: '#f1f5f9', display: 'flex' }}>Kupon Analizi</div>
+        <div style={{ fontSize: 48, fontWeight: 700, color: '#f1f5f9', display: 'flex' }}>Öneri Analizi</div>
       )}
     </div>
   )

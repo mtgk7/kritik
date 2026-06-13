@@ -32,7 +32,7 @@ const PLANS = [
     period:   '/ay',
     original: null,
     discount: null,
-    desc:     'En popüler — sınırsız maç & kupon erişimi',
+    desc:     'En popüler — sınırsız maç & öneri erişimi',
     premium:  true,
   },
   {

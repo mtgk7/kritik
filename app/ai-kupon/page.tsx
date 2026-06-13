@@ -3,7 +3,7 @@ import { meta } from '@/lib/metadata'
 import AiKuponClient from './AiKuponClient'
 
 export const dynamic = 'force-dynamic'
-export const metadata = meta('AI Kupon', 'Kriterlere göre AI destekli kombinasyon kuponu oluştur.')
+export const metadata = meta('AI Öneri', 'Kriterlere göre AI destekli kombinasyon önerisi al.')
 
 export default async function AiKuponPage() {
   const supabase = await createClient()
@@ -27,11 +27,11 @@ export default async function AiKuponPage() {
             fontSize: 'clamp(1.8rem, 5vw, 2.8rem)', letterSpacing: '0.03em',
             textTransform: 'uppercase', color: 'var(--color-text-primary)', lineHeight: 1,
           }}>
-            AI Kupon
+            AI Öneri
           </h1>
         </div>
         <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-          Güven eşiği ve lig seçerek algoritmamızın en iyi maçlardan oluşturduğu kombinasyon kuponunu al.
+          Güven eşiği ve lig seçerek algoritmamızın en iyi maçlardan oluşturduğu kombinasyon önerisini al.
         </p>
         <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', lineHeight: 1.6, marginTop: '0.75rem', borderLeft: '3px solid var(--color-border)', paddingLeft: '0.75rem' }}>
           ⚠️ Burada yer alan veriler tamamen istatistiksel analizlerdir, yatırım tavsiyesi niteliği taşımaz ve kesin kazanç garantisi vermez.
@@ -63,7 +63,7 @@ export default async function AiKuponPage() {
             Premium Özellik
           </h2>
           <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.65, marginBottom: '1.75rem', maxWidth: '380px', margin: '0 auto 1.75rem' }}>
-            AI kupon oluşturucu premium üyelere özeldir. Güven eşiği, lig ve maç sayısı kriterlerine göre algoritmamızın kişiselleştirilmiş kombinasyonlarını al.
+            AI öneri oluşturucu premium üyelere özeldir. Güven eşiği, lig ve maç sayısı kriterlerine göre algoritmamızın kişiselleştirilmiş kombinasyonlarını al.
           </p>
           <a href={user ? '/odeme' : '/kayit'} style={{
             display: 'inline-block',
