@@ -7,7 +7,7 @@ const TO     = 'info@kritikanaliz.com'
 const FROM   = process.env.EMAIL_FROM ?? 'Kritik <noreply@kritik.app>'
 
 export async function POST(req: NextRequest) {
-  const { ad, eposta, konu, mesaj } = await req.json()
+  const { ad, eposta, telefon, konu, mesaj } = await req.json()
 
   if (!ad?.trim() || !eposta?.trim() || !konu?.trim() || !mesaj?.trim()) {
     return NextResponse.json({ error: 'Tüm alanlar zorunludur.' }, { status: 400 })
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       `📬 <b>Yeni İletişim Formu</b>\n` +
       `👤 ${ad}\n` +
       `✉️ ${eposta}\n` +
+      (telefon ? `📞 ${telefon}\n` : '') +
       `📌 ${konu}\n\n` +
       `${mesaj.trim().slice(0, 300)}${mesaj.trim().length > 300 ? '…' : ''}`
     )
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
         <h2>Yeni İletişim Talebi</h2>
         <p><strong>Ad Soyad:</strong> ${ad}</p>
         <p><strong>E-posta:</strong> ${eposta}</p>
+        ${telefon ? `<p><strong>Telefon:</strong> ${telefon}</p>` : ''}
         <p><strong>Konu:</strong> ${konu}</p>
         <hr />
         <p><strong>Mesaj:</strong></p>

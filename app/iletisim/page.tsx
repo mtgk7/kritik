@@ -12,7 +12,7 @@ const KONULAR = [
 ]
 
 export default function IletisimPage() {
-  const [form, setForm] = useState({ ad: '', eposta: '', konu: '', mesaj: '' })
+  const [form, setForm] = useState({ ad: '', eposta: '', telefon: '', konu: '', mesaj: '' })
   const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errMsg, setErrMsg] = useState('')
 
@@ -86,6 +86,16 @@ export default function IletisimPage() {
               type="email" required value={form.eposta}
               onChange={e => set('eposta', e.target.value)}
               placeholder="eposta@ornek.com"
+              style={inputStyle}
+            />
+          </Field>
+
+          {/* Telefon */}
+          <Field label="Telefon">
+            <input
+              type="tel" value={form.telefon}
+              onChange={e => set('telefon', e.target.value)}
+              placeholder="+90 5xx xxx xx xx"
               style={inputStyle}
             />
           </Field>
