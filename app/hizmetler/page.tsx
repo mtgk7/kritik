@@ -21,9 +21,9 @@ const PREMIUM_FEATURES = [
   { icon: '📈', title: 'Son 5 Maç Detayı', desc: 'Her iki takımın son 5 maç sonuçları, gol, sarı ve kırmızı kart istatistikleri.' },
   { icon: '🔬', title: 'Derin Maç Analizi', desc: 'Tahmin dağılımı, takım karşılaştırması, kafa kafaya geçmiş ve AI algoritma yorumu.' },
   { icon: '🧠', title: 'Özel Claude AI Analizi', desc: 'Her maç için istek üzerine Claude AI\'nin kapsamlı bahis raporu — risk, değer ve öneri.' },
-  { icon: '🤖', title: 'AI Hazır Kuponlar', desc: 'Algoritmanın ürettiği Banko ve xG Canavarı kombinasyon kuponları.' },
-  { icon: '⭐', title: 'Premium Kuponlar', desc: 'Güven skoru %70+ yüksek kombinasyon kuponları yalnızca premium üyelere açık.' },
-  { icon: '✍️', title: 'Editör Tahminleri', desc: 'Uzman editörlerimizin özenle seçtiği kupon önerileri ve analizleri.' },
+  { icon: '🤖', title: 'AI Önerileri', desc: 'Algoritmanın ürettiği Banko ve xG Canavarı kombinasyon kuponları.' },
+  { icon: '⭐', title: 'Özel Öneriler', desc: 'Güven skoru %70+ yüksek kombinasyon kuponları yalnızca premium üyelere açık.' },
+  { icon: '✍️', title: 'Editör Önerileri', desc: 'Uzman editörlerimizin özenle seçtiği öneriler ve analizleri.' },
   { icon: '🔒', title: 'Premium Sürpriz Kupon', desc: 'En yüksek güven skorlu 3 maçın kombinasyonu — yalnızca premium üyelere özel.' },
   { icon: '📲', title: 'Telegram & Push Bildirimleri', desc: 'Yeni kupon ve yüksek güven maçları için anlık bildirim al.' },
 ]
@@ -45,7 +45,7 @@ const PLANS = [
 const COMPARE_ROWS = [
   { label: 'Maç takvimi',                   free: true,           premium: true },
   { label: 'Günlük haberler',               free: true,           premium: true },
-  { label: 'AI hazır kuponlar',              free: false,          premium: true },
+  { label: 'AI önerileri',                   free: false,          premium: true },
   { label: 'Favori takım takibi',           free: true,           premium: true },
   { label: 'İsabet oranı panosu',           free: true,           premium: true },
   { label: 'Telefona kurulum (PWA)',         free: true,           premium: true },
@@ -56,8 +56,8 @@ const COMPARE_ROWS = [
   { label: 'Son 5 maç detayı',              free: false,          premium: true },
   { label: 'Derin maç analizi',             free: false,          premium: true },
   { label: 'Özel Claude AI analizi',        free: false,          premium: true },
-  { label: 'Premium kuponlar (%70+)',        free: false,          premium: true },
-  { label: 'Editör tahminleri',             free: false,          premium: true },
+  { label: 'Özel öneriler (%70+)',           free: false,          premium: true },
+  { label: 'Editör önerileri',              free: false,          premium: true },
   { label: 'Premium Sürpriz Kupon',         free: false,          premium: true },
   { label: 'Telegram & push bildirimleri',  free: false,          premium: true },
 ]
