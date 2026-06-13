@@ -244,13 +244,22 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
               {translateTeam(match.away_team)}
             </span>
             {!isFinished && match.prediction && (
-              unlocked ? (
-                <span className="badge-prediction" style={{ fontSize: '0.7rem' }}>
-                  {match.prediction}{match.prediction_confidence ? ` %${match.prediction_confidence}` : ''}
+              match.prediction === '__locked__' ? (
+                <span aria-hidden="true" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                  fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.04em',
+                  borderRadius: '4px', padding: '0.2rem 0.5rem',
+                  background: 'var(--color-surface-2)', color: 'var(--color-text-tertiary)',
+                }}>
+                  <svg width="9" height="11" viewBox="0 0 9 11" fill="none" aria-hidden="true">
+                    <rect x="0.5" y="4.5" width="8" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+                    <path d="M2.5 4.5V3a2 2 0 0 1 4 0v1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  Premium
                 </span>
               ) : (
-                <span className="badge-prediction" style={{ fontSize: '0.7rem', filter: 'blur(4px)', userSelect: 'none' }}>
-                  {match.prediction} %{match.prediction_confidence || 60}
+                <span className="badge-prediction" style={{ fontSize: '0.7rem' }}>
+                  {match.prediction}{match.prediction_confidence ? ` %${match.prediction_confidence}` : ''}
                 </span>
               )
             )}

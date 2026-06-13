@@ -44,6 +44,9 @@ export default async function KuponlarPage() {
         <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
           Algoritmanın ürettiği kombinasyon önerileri
         </p>
+        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', lineHeight: 1.6, marginTop: '0.75rem', borderLeft: '3px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+          ⚠️ Burada yer alan veriler tamamen istatistiksel analizlerdir, yatırım tavsiyesi niteliği taşımaz ve kesin kazanç garantisi vermez.
+        </p>
       </div>
 
       {/* AI Kupon Builder CTA */}

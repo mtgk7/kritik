@@ -25,18 +25,22 @@ export default function ResultsListClient({ matches }: Props) {
   const [filter, setFilter] = useState<'tümü' | 'doğru' | 'yanlış'>('tümü')
 
   const leagues = useMemo(() => {
-    const set = new Set(matches.map(m => m.league_name ?? 'Genel'))
+    const set = new Set(
+      matches
+        .filter(m => m.prediction_correct !== null)
+        .map(m => m.league_name ?? 'Genel'),
+    )
     return ['Tümü', ...LEAGUE_ORDER.filter(l => set.has(l)),
       ...[...set].filter(l => !LEAGUE_ORDER.includes(l))]
   }, [matches])
 
-  const withPrediction = useMemo(
-    () => matches.filter(m => m.prediction),
+  const decided = useMemo(
+    () => matches.filter(m => m.prediction && m.prediction_correct !== null),
     [matches],
   )
-  const correct  = withPrediction.filter(m => m.prediction_correct === true).length
-  const wrong    = withPrediction.filter(m => m.prediction_correct === false).length
-  const rate     = withPrediction.length > 0 ? Math.round((correct / withPrediction.length) * 100) : null
+  const correct = decided.filter(m => m.prediction_correct === true).length
+  const wrong   = decided.filter(m => m.prediction_correct === false).length
+  const rate    = decided.length > 0 ? Math.round((correct / decided.length) * 100) : null
 
   const filtered = useMemo(() => {
     return matches.filter(m => {
@@ -71,7 +75,7 @@ export default function ResultsListClient({ matches }: Props) {
   return (
     <div>
       {/* İstatistik başlığı */}
-      {withPrediction.length > 0 && (
+      {decided.length > 0 && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -81,7 +85,7 @@ export default function ResultsListClient({ matches }: Props) {
           overflow: 'hidden',
           marginBottom: '2rem',
         }}>
-          <StatCell label="Analiz Edilen" value={String(withPrediction.length)} />
+          <StatCell label="Analiz Edilen" value={String(decided.length)} />
           <StatCell label="Doğru"  value={String(correct)} color="var(--color-success)" />
           <StatCell label="Yanlış" value={String(wrong)}   color="var(--color-accent)" />
           {rate !== null && (

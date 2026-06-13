@@ -25,22 +25,14 @@ export default async function EditorTahminleriPage() {
 
   const week = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const [coupons, { data: recentMatches }] = await Promise.all([
+  const [coupons, { data: pastMatches }] = await Promise.all([
     supabaseFetch<Coupon>('coupons?select=*&is_editor_pick=eq.true&order=created_at.desc'),
     supabase.from('matches')
-      .select('id,home_team,away_team,league_name,confidence_score,prediction,match_time,status')
-      .eq('status', 'yakında')
-      .gte('confidence_score', 0.65)
-      .order('confidence_score', { ascending: false })
-      .limit(3),
+      .select('prediction_correct')
+      .eq('status', 'bitti')
+      .not('prediction_correct', 'is', null)
+      .gte('match_time', week),
   ])
-
-  // Son 7 günün isabet oranı
-  const { data: pastMatches } = await supabase.from('matches')
-    .select('prediction_correct')
-    .eq('status', 'bitti')
-    .not('prediction_correct', 'is', null)
-    .gte('match_time', week)
   const toplamTahmin = pastMatches?.length ?? 0
   const dogruTahmin  = pastMatches?.filter(m => m.prediction_correct).length ?? 0
   const haftalikIsabet = toplamTahmin >= 3 ? Math.round((dogruTahmin / toplamTahmin) * 100) : null
@@ -134,58 +126,28 @@ export default async function EditorTahminleriPage() {
         </p>
       </div>
 
-      {/* Haftalık stats + öne çıkan maçlar */}
-      {(haftalikIsabet !== null || (recentMatches?.length ?? 0) > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: haftalikIsabet !== null ? 'auto 1fr' : '1fr', gap: '1px', background: 'var(--color-border)', borderRadius: '12px', overflow: 'hidden', marginBottom: '2.5rem' }}>
-          {haftalikIsabet !== null && (
-            <div style={{ background: 'var(--color-surface-2)', padding: '1.25rem 1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: '140px' }}>
-              <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.35rem' }}>
-                Bu Hafta İsabet
-              </div>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '3rem', lineHeight: 1,
-                color: haftalikIsabet >= 60 ? 'var(--color-success)' : haftalikIsabet >= 45 ? 'var(--color-warning)' : 'var(--color-accent)',
-              }}>
-                %{haftalikIsabet}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginTop: '0.3rem' }}>
-                {dogruTahmin}/{toplamTahmin} tahmin doğru
-              </div>
-            </div>
-          )}
-          {(recentMatches?.length ?? 0) > 0 && (
-            <div style={{ background: 'var(--color-surface-2)', padding: '1.25rem 1.5rem' }}>
-              <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
-                Öne Çıkan Maçlar
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {(recentMatches as Match[]).map(m => {
-                  const conf = Math.round((m.confidence_score ?? 0) * 100)
-                  const dt   = new Date(m.match_time).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                  return (
-                    <a key={m.id} href={`/maclar/${m.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                          {m.home_team} vs {m.away_team}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
-                          {m.league_name} · {dt}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.35rem', lineHeight: 1, color: conf >= 70 ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                          %{conf}
-                        </div>
-                        <div style={{ fontSize: '0.58rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>güven</div>
-                      </div>
-                    </a>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+      {/* Haftalık isabet */}
+      {haftalikIsabet !== null && (
+        <div style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem 1.75rem', display: 'inline-flex', flexDirection: 'column', marginBottom: '2.5rem' }}>
+          <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.35rem' }}>
+            Bu Hafta İsabet
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '3rem', lineHeight: 1,
+            color: haftalikIsabet >= 60 ? 'var(--color-success)' : haftalikIsabet >= 45 ? 'var(--color-warning)' : 'var(--color-accent)',
+          }}>
+            %{haftalikIsabet}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginTop: '0.3rem' }}>
+            {dogruTahmin}/{toplamTahmin} tahmin doğru
+          </div>
         </div>
       )}
+
+      {/* Yasal uyarı */}
+      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', lineHeight: 1.6, marginBottom: '2rem', borderLeft: '3px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+        ⚠️ Burada yer alan veriler tamamen istatistiksel analizlerdir, yatırım tavsiyesi niteliği taşımaz ve kesin kazanç garantisi vermez.
+      </p>
 
       {coupons.length === 0 ? (
         <div style={{ padding: '4rem 0', borderTop: '1px solid var(--color-border)' }}>

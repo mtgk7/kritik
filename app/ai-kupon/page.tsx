@@ -33,6 +33,9 @@ export default async function AiKuponPage() {
         <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
           Güven eşiği ve lig seçerek algoritmamızın en iyi maçlardan oluşturduğu kombinasyon kuponunu al.
         </p>
+        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', lineHeight: 1.6, marginTop: '0.75rem', borderLeft: '3px solid var(--color-border)', paddingLeft: '0.75rem' }}>
+          ⚠️ Burada yer alan veriler tamamen istatistiksel analizlerdir, yatırım tavsiyesi niteliği taşımaz ve kesin kazanç garantisi vermez.
+        </p>
       </div>
 
       {isPremium ? (

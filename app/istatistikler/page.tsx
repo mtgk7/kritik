@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Match } from '@/lib/types'
 import { meta } from '@/lib/metadata'
+import { translateTeam } from '@/lib/team-names'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -190,7 +191,7 @@ export default async function IstatistiklerPage() {
                   }}>
                     <div>
                       <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                        {m.home_team} — {m.away_team}
+                        {translateTeam(m.home_team)} — {translateTeam(m.away_team)}
                       </span>
                       <span style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginLeft: '0.6rem' }}>
                         {m.league_name}

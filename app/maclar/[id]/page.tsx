@@ -95,13 +95,24 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const hasScore   = isFinished && m.home_score != null && m.away_score != null
   const matchDate  = new Date(m.match_time)
 
-  // Tahmin dağılımı — ana + alternatifler
+  // Tahmin dağılımı — ana + alternatifler (kilitliyse nötr placeholder)
   const allPreds: { prediction: string; confidence: number }[] = []
   if (m.prediction && m.prediction_confidence) {
     allPreds.push({ prediction: m.prediction, confidence: m.prediction_confidence })
   }
   ;(m.alternatives ?? []).forEach(a => allPreds.push(a))
   const totalConf = allPreds.reduce((s, a) => s + a.confidence, 0)
+
+  // Blurlu bölüm için — gerçek veri asla kilitli kullanıcıya gönderilmez
+  const displayPreds = unlocked
+    ? allPreds
+    : allPreds.length > 0
+      ? [
+          { prediction: '??', confidence: 55 },
+          { prediction: '??', confidence: 25 },
+          { prediction: '??', confidence: 20 },
+        ]
+      : []
 
   // Karşılaştırma hesapları
   const homeXg  = m.home_xg  ?? 0
@@ -208,7 +219,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         }}>
 
       {/* ── Tahmin Dağılımı ─────────────────────────────────────────────── */}
-      {allPreds.length > 0 && !isFinished && (
+      {displayPreds.length > 0 && !isFinished && (
         <section style={{ marginBottom: '2.5rem' }}>
           <SectionTitle>Tahmin Dağılımı</SectionTitle>
 
@@ -218,14 +229,15 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
               <span style={{
                 fontFamily: 'var(--font-display)', fontWeight: 700,
                 fontSize: '2.25rem', lineHeight: 1,
-                color: 'var(--color-accent)', letterSpacing: '0.02em', textTransform: 'uppercase',
+                color: unlocked ? 'var(--color-accent)' : 'var(--color-border)',
+                letterSpacing: '0.02em', textTransform: 'uppercase',
               }}>
-                {allPreds[0].prediction}
+                {displayPreds[0].prediction}
               </span>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.5rem', color: 'var(--color-accent)' }}>
-                %{allPreds[0].confidence}
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.5rem', color: unlocked ? 'var(--color-accent)' : 'var(--color-border)' }}>
+                %{displayPreds[0].confidence}
               </span>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-border)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Ana Tahmin
               </span>
             </div>
@@ -233,7 +245,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
 
           {/* Tüm seçenekler bar olarak */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {allPreds.map((pred, i) => {
+            {displayPreds.map((pred, i) => {
               const pct = totalConf > 0 ? (pred.confidence / totalConf) * 100 : pred.confidence
               const isMain = i === 0
               return (
@@ -241,19 +253,19 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                     <span style={{
                       fontSize: '0.82rem', fontWeight: isMain ? 700 : 500,
-                      color: isMain ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                      color: unlocked ? (isMain ? 'var(--color-text-primary)' : 'var(--color-text-secondary)') : 'var(--color-border)',
                       textTransform: 'uppercase', letterSpacing: '0.04em',
                     }}>
                       {pred.prediction}
                     </span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: isMain ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: unlocked ? (isMain ? 'var(--color-accent)' : 'var(--color-text-tertiary)') : 'var(--color-border)' }}>
                       %{pred.confidence}
                     </span>
                   </div>
                   <div style={{ height: isMain ? '8px' : '5px', borderRadius: '99px', background: 'var(--color-border)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: '99px',
-                      background: isMain ? 'var(--color-accent)' : 'var(--color-border-strong)',
+                      background: unlocked ? (isMain ? 'var(--color-accent)' : 'var(--color-border-strong)') : 'var(--color-border)',
                       width: `${pct}%`,
                       transition: 'width 0.4s cubic-bezier(0.16,1,0.3,1)',
                     }} />

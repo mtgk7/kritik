@@ -34,6 +34,15 @@ export default async function HomePage() {
     }
   } catch {}
 
+  // Premium olmayan kullanıcılar için tahmin verisini sunucu tarafında maskele
+  const visibleMatches = isPremium
+    ? matches
+    : matches.map(m =>
+        m.is_free_preview
+          ? m
+          : { ...m, prediction: m.prediction ? '__locked__' : null, prediction_confidence: null },
+      )
+
   return (
     <main style={{ padding: 'var(--page-pad)', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
       <div className={latestNews.length > 0 ? 'home-grid' : undefined}>
@@ -58,7 +67,7 @@ export default async function HomePage() {
             <EmptyState />
           ) : (
             <>
-              <MatchListClient matches={matches} isPremium={isPremium} favTeams={favTeams} />
+              <MatchListClient matches={visibleMatches} isPremium={isPremium} favTeams={favTeams} />
               <div style={{ marginTop: '2.5rem' }}>
                 <AdSlot
                   slot={process.env.NEXT_PUBLIC_AD_SLOT_FEED ?? ''}

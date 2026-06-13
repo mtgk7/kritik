@@ -219,53 +219,92 @@ export default function AiKuponClient() {
           {/* Maç kartları */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: '1.5rem' }}>
             {result.matches.map((m, i) => {
-              const confPct  = Math.round((m.confidence_score ?? 0) * 100)
+              const confPct   = Math.round((m.confidence_score ?? 0) * 100)
               const confColor = confPct >= 70 ? 'var(--color-success)' : confPct >= 55 ? 'var(--color-warning)' : 'var(--color-text-tertiary)'
-              const odd      = getOdd(m)
-              const isLast   = i === result.matches.length - 1
+              const mo        = m.market_odds
+              const pred      = (m.prediction ?? '').toLowerCase()
+              const isLast    = i === result.matches.length - 1
+
+              const oddsRow: { label: string; val?: number; active: boolean }[] = [
+                { label: '1', val: mo?.ms1, active: pred === 'ms1' },
+                { label: '0', val: mo?.x,   active: pred === 'x' },
+                { label: '2', val: mo?.ms2, active: pred === 'ms2' },
+                { label: 'Alt', val: mo?.under25, active: pred.includes('alt') },
+                { label: 'Üst', val: mo?.over25,  active: pred.includes('üst') },
+              ]
+              const hasOdds = oddsRow.some(o => o.val)
 
               return (
-                <a key={m.id} href={`/maclar/${m.id}`} style={{
-                  display: 'block', textDecoration: 'none', color: 'inherit',
-                  padding: '1.1rem 1.25rem',
+                <div key={m.id} style={{
                   borderBottom: isLast ? 'none' : '1px solid var(--color-border)',
                   background: 'var(--color-base)',
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.55rem' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {translateTeam(m.home_team)} <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 500, fontSize: '0.7em' }}>vs</span> {translateTeam(m.away_team)}
+                  <a href={`/maclar/${m.id}`} style={{
+                    display: 'block', textDecoration: 'none', color: 'inherit',
+                    padding: '1rem 1.25rem 0.6rem',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.45rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--color-text-primary)', marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {translateTeam(m.home_team)} <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 500, fontSize: '0.7em' }}>vs</span> {translateTeam(m.away_team)}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
+                          {m.league_name}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
-                        {m.league_name}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-accent)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: 'var(--color-accent)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                           {predLabel(m.prediction)}
-                        </span>
-                        {odd && (
-                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-secondary)' }}>
-                            {odd.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: confColor, textAlign: 'right' }}>
-                        %{confPct} güven
+                        </div>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: confColor }}>
+                          %{confPct} güven
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {m.reasoning && (
-                    <p style={{
-                      fontSize: '0.78rem', color: 'var(--color-text-secondary)', lineHeight: 1.55,
-                      margin: 0, borderLeft: '2px solid var(--color-border-strong)', paddingLeft: '0.6rem',
-                    }}>
-                      {m.reasoning}
-                    </p>
-                  )}
-                </a>
+                    {m.reasoning && (
+                      <p style={{ fontSize: '0.76rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 0.5rem', borderLeft: '2px solid var(--color-border-strong)', paddingLeft: '0.6rem' }}>
+                        {m.reasoning}
+                      </p>
+                    )}
+                  </a>
+
+                  {/* Oran satırı */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0 1.25rem 0.85rem', flexWrap: 'wrap' }}>
+                    {hasOdds ? oddsRow.map(o => o.val ? (
+                      <span key={o.label} style={{
+                        display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+                        padding: '0.3rem 0.6rem', borderRadius: '6px', minWidth: '42px',
+                        background: o.active ? 'var(--color-accent)' : 'var(--color-surface-2)',
+                        border: `1px solid ${o.active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      }}>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.06em', color: o.active ? 'oklch(97% 0.005 255)' : 'var(--color-text-tertiary)', textTransform: 'uppercase' }}>{o.label}</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, fontFamily: 'var(--font-display)', color: o.active ? 'oklch(97% 0.005 255)' : 'var(--color-text-primary)' }}>{o.val.toFixed(2)}</span>
+                      </span>
+                    ) : null) : (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)' }}>Oran bilgisi yok</span>
+                    )}
+                    <a
+                      href="https://www.iddaa.com/program/futbol"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        marginLeft: 'auto',
+                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                        padding: '0.3rem 0.7rem', borderRadius: '6px',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: '0.7rem', fontWeight: 600,
+                        textDecoration: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      iddaa.com ↗
+                    </a>
+                  </div>
+                </div>
               )
             })}
           </div>

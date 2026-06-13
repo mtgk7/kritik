@@ -3,6 +3,7 @@ import { Inter, Barlow_Condensed } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -77,29 +78,7 @@ export default function RootLayout({
         <div style={{ flex: 1 }}>
           {children}
         </div>
-        <footer style={{
-          borderTop: '1px solid var(--color-border)',
-          padding: '1.25rem var(--page-pad)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-        }}>
-          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
-            © {new Date().getFullYear()} Kritik · Yalnızca bilgilendirme amaçlıdır
-          </p>
-          <nav style={{ display: 'flex', gap: '1.25rem' }}>
-            {[
-              { href: '/kullanim-kosullari', label: 'Kullanım Koşulları' },
-              { href: '/gizlilik-politikasi', label: 'Gizlilik Politikası' },
-            ].map(l => (
-              <a key={l.href} href={l.href} style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', textDecoration: 'none' }}>
-                {l.label}
-              </a>
-            ))}
-          </nav>
-        </footer>
+        <Footer />
       </body>
     </html>
   );
