@@ -58,8 +58,8 @@ export default function Footer() {
           <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.85rem' }}>
             İletişim
           </p>
-          <a href="mailto:info@oleonolive.com" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none', display: 'block', marginBottom: '1rem' }}>
-            info@oleonolive.com
+          <a href="mailto:info@kritikanaliz.com" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none', display: 'block', marginBottom: '1rem' }}>
+            info@kritikanaliz.com
           </a>
           <a href="/iletisim" style={{
             display: 'inline-block',

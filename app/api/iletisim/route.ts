@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const TO     = 'info@oleonolive.com'
+const TO     = 'info@kritikanaliz.com'
 const FROM   = process.env.EMAIL_FROM ?? 'Kritik <noreply@kritik.app>'
 
 export async function POST(req: NextRequest) {

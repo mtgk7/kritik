@@ -65,7 +65,7 @@ export default function IletisimPage() {
             Mesajınız İletildi
           </p>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-            En kısa sürede <strong>info@oleonolive.com</strong> adresinden dönüş yapılacaktır.
+            En kısa sürede <strong>info@kritikanaliz.com</strong> adresinden dönüş yapılacaktır.
           </p>
         </div>
       ) : (

@@ -8,7 +8,7 @@ const SATICI = {
   vergiDairesi: 'İzmir Yamanlar Vergi Dairesi',
   adres: '[ADRES]',
   telefon: '[TELEFON]',
-  eposta: 'info@oleonolive.com',
+  eposta: 'info@kritikanaliz.com',
 }
 
 export default function MesafeliSatisSozlesmesiPage() {

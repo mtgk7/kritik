@@ -22,7 +22,7 @@ export default function KullanimKosullariPage() {
         <Section title="1. Taraflar ve Platform Tanımı">
           <p>
             Bu sözleşme; <strong>[AD SOYAD]</strong> (Bireysel Sosyal İçerik Üreticisi, İzmir Yamanlar
-            Vergi Dairesi, e-posta: info@oleonolive.com) ile <strong>kritik-wine.vercel.app</strong>{' '}
+            Vergi Dairesi, e-posta: info@kritikanaliz.com) ile <strong>kritik-wine.vercel.app</strong>{' '}
             adresindeki Kritik platformuna üye olan kullanıcı ("Üye") arasında kurulur.
             Platforma kayıt olarak bu sözleşmeyi okuduğunu ve kabul ettiğini beyan etmiş sayılırsın.
           </p>
@@ -51,7 +51,7 @@ export default function KullanimKosullariPage() {
           <p>
             Hesabının güvenliğinden sen sorumlusun. Şifreni kimseyle paylaşma. Hesabınla gerçekleştirilen
             tüm işlemler sana ait kabul edilir. Şüpheli bir aktivite fark edersen derhal{' '}
-            <a href="mailto:info@oleonolive.com" style={{ color: 'var(--color-accent)' }}>info@oleonolive.com</a>{' '}
+            <a href="mailto:info@kritikanaliz.com" style={{ color: 'var(--color-accent)' }}>info@kritikanaliz.com</a>{' '}
             adresine bildir.
           </p>
         </Section>
@@ -106,7 +106,7 @@ export default function KullanimKosullariPage() {
         <Section title="10. İletişim">
           <p>
             Sorularınız için:{' '}
-            <a href="mailto:info@oleonolive.com" style={{ color: 'var(--color-accent)' }}>info@oleonolive.com</a>
+            <a href="mailto:info@kritikanaliz.com" style={{ color: 'var(--color-accent)' }}>info@kritikanaliz.com</a>
           </p>
         </Section>
 
