@@ -45,11 +45,8 @@ export default function Footer() {
             {LEGAL_LINKS.map(l => (
               <a key={l.href} href={l.href} style={{
                 fontSize: '0.82rem', color: 'var(--color-text-secondary)',
-                textDecoration: 'none', transition: 'color 0.15s',
-              }}
-              onMouseOver={e => (e.currentTarget.style.color = 'var(--color-text-primary)')}
-              onMouseOut={e => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
-              >
+                textDecoration: 'none',
+              }}>
                 {l.label}
               </a>
             ))}
