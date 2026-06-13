@@ -9,7 +9,7 @@ const FREE_FEATURES = [
   { icon: '🎯', title: 'Haftada 4 Ücretsiz Maç Analizi', desc: 'Her hafta rotasyonla değişen 4 maçın AI tahmini, güven skoru ve xG analizi tamamen ücretsiz.' },
   { icon: '📅', title: 'Tüm Maç Takvimi', desc: 'Süper Lig, Premier Lig, Şampiyonlar Ligi ve daha fazlası — tüm yaklaşan maçları takip et.' },
   { icon: '📰', title: 'Günlük Spor Haberleri', desc: 'Her gün güncellenen haberler: Dünya Kupası, Süper Lig, Avrupa ligleri.' },
-  { icon: '♥', title: 'Favori Takım Takibi', desc: 'Takip ettiğin takımların maçlarını filtrele, liste başında vurgulu gör.' },
+  { icon: '❤️', title: 'Favori Takım Takibi', desc: 'Takip ettiğin takımların maçlarını filtrele, liste başında vurgulu gör.' },
   { icon: '📊', title: 'İsabet Oranı Panosu', desc: 'Algoritmanın genel doğruluk oranı, lig ve güven bazlı performans istatistikleri.' },
   { icon: '📱', title: 'Telefona Kurulabilir (PWA)', desc: 'Uygulamayı ana ekranına ekle, internet bağlantısı olmadan da açılır.' },
 ]
@@ -372,9 +372,9 @@ function FeatureRow({ icon, title, desc, premium }: { icon: string; title: strin
   return (
     <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
       <span style={{ fontSize: '1.1rem', flexShrink: 0, lineHeight: 1.3 }}>{icon}</span>
-      <div>
-        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: premium ? 'var(--color-premium)' : 'var(--color-text-primary)', marginBottom: '0.15rem' }}>{title}</div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', lineHeight: 1.45 }}>{desc}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: premium ? 'var(--color-premium)' : 'var(--color-text-primary)', marginBottom: '0.15rem', lineHeight: 1.3, wordBreak: 'break-word' }}>{title}</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', lineHeight: 1.5 }}>{desc}</div>
       </div>
     </div>
   )
