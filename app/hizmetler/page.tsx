@@ -2,7 +2,7 @@ import { meta } from '@/lib/metadata'
 
 export const metadata = meta(
   'Hizmetler',
-  'Kritik — Yapay zeka destekli iddaa analiz platformu. Ücretsiz ve premium hizmetlerimizi keşfedin.'
+  'Kritik — Yapay zeka destekli futbol analiz platformu. Ücretsiz ve premium hizmetlerimizi keşfedin.'
 )
 
 const FREE_FEATURES = [

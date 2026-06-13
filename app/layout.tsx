@@ -22,7 +22,7 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.verce
 
 export const metadata: Metadata = {
   title: "Kritik — Yapay Zeka Destekli İddaa Analizi",
-  description: "xG verileri ve sakatlık analizleriyle güçlendirilmiş iddaa tahminleri",
+  description: "xG verileri ve sakatlık analizleriyle güçlendirilmiş futbol tahminleri",
   metadataBase: new URL(SITE_URL),
   manifest: '/manifest.json',
   appleWebApp: {

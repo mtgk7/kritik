@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 const BASE = 'Kritik'
-const DESC = 'Yapay zeka destekli iddaa analizi — xG verileri, form skorları ve sakatlık etki analizi.'
+const DESC = 'Yapay zeka destekli futbol analizi — xG verileri, form skorları ve sakatlık etki analizi.'
 
 export function meta(title: string, description?: string): Metadata {
   return {
