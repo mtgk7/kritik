@@ -10,12 +10,19 @@ export default async function Navbar() {
   const { data: { user } } = await supabase.auth.getUser()
   const isAdmin = user?.email === ADMIN_EMAIL
 
+  let isPremium = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users').select('is_premium,premium_until').eq('id', user.id).single()
+    isPremium = !!(profile?.is_premium && profile?.premium_until && new Date(profile.premium_until) > new Date())
+  }
+
   const links = [
     { href: '/hizmetler',         label: 'Ana Sayfa' },
     { href: '/',                   label: 'Maçlar' },
     { href: '/sonuclar',          label: 'Sonuçlar' },
     { href: '/haberler',          label: 'Haberler' },
-    { href: '/kuponlar',          label: 'AI Kuponlar' },
+    ...(isPremium ? [{ href: '/kuponlar', label: 'AI Kuponlar' }] : []),
     { href: '/editor-tahminleri', label: 'Editör' },
     { href: '/istatistikler',     label: 'İstatistikler' },
     ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
