@@ -86,7 +86,7 @@ export default function Footer() {
         gap: '0.5rem',
       }}>
         <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
-          © {new Date().getFullYear()} Kritik — Bireysel Sosyal İçerik Üreticisi · Vergi Dairesi: İzmir Yamanlar
+          © {new Date().getFullYear()} Kritik
         </p>
         <p style={{ fontSize: '0.68rem', color: 'var(--color-text-tertiary)', margin: 0, lineHeight: 1.6 }}>
           ⚠️ {DISCLAIMER}
