@@ -26,7 +26,7 @@ export default function GizlilikPolitikasiPage() {
           </p>
           <p style={{ marginTop: '0.5rem' }}>
             İletişim:{' '}
-            <a href="mailto:gokbukmert@gmail.com" style={{ color: 'var(--color-accent)' }}>gokbukmert@gmail.com</a>
+            <a href="mailto:info@oleonolive.com" style={{ color: 'var(--color-accent)' }}>info@oleonolive.com</a>
           </p>
         </Section>
 
@@ -89,7 +89,7 @@ export default function GizlilikPolitikasiPage() {
           </ul>
           <p style={{ marginTop: '0.75rem' }}>
             Taleplerinizi{' '}
-            <a href="mailto:gokbukmert@gmail.com" style={{ color: 'var(--color-accent)' }}>gokbukmert@gmail.com</a>{' '}
+            <a href="mailto:info@oleonolive.com" style={{ color: 'var(--color-accent)' }}>info@oleonolive.com</a>{' '}
             adresine iletebilirsiniz. Talepler en geç 30 gün içinde yanıtlanır.
           </p>
         </Section>

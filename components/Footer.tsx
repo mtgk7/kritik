@@ -58,17 +58,20 @@ export default function Footer() {
           <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.85rem' }}>
             İletişim
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-            <a href="mailto:gokbukmert@gmail.com" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
-              gokbukmert@gmail.com
-            </a>
-            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
-              [TELEFON]
-            </p>
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-tertiary)', margin: 0, lineHeight: 1.5 }}>
-              [ADRES]
-            </p>
-          </div>
+          <a href="mailto:info@oleonolive.com" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none', display: 'block', marginBottom: '1rem' }}>
+            info@oleonolive.com
+          </a>
+          <a href="/iletisim" style={{
+            display: 'inline-block',
+            fontFamily: 'var(--font-display)', fontWeight: 700,
+            fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase',
+            color: 'var(--color-text-primary)',
+            border: '1.5px solid var(--color-border-strong)',
+            borderRadius: '7px', padding: '0.45rem 1rem',
+            textDecoration: 'none',
+          }}>
+            Bize Ulaşın →
+          </a>
         </div>
       </div>
 
