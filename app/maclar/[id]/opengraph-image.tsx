@@ -31,7 +31,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           KRİTİK
         </div>
         <div style={{ fontSize: 11, color: '#334155', marginLeft: 4 }}>
-          Yapay Zeka Destekli İddaa Analizi
+          Yapay Zeka Destekli Futbol Analizi
         </div>
       </div>
 

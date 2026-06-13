@@ -1,7 +1,7 @@
 {
-  "name": "Kritik — Yapay Zeka İddaa Analizi",
+  "name": "Kritik — Yapay Zeka Futbol Analizi",
   "short_name": "Kritik",
-  "description": "xG, form ve güven skoruyla güçlendirilmiş AI iddaa tahminleri",
+  "description": "xG, form ve güven skoruyla güçlendirilmiş AI futbol analizleri",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f7fb",

@@ -77,7 +77,7 @@ export default function HizmetlerPage() {
           textTransform: 'uppercase', color: 'var(--color-text-on-dark-2)',
           marginBottom: '1.25rem',
         }}>
-          Yapay Zeka Destekli İddaa Analizi
+          Yapay Zeka Destekli Futbol Analizi
         </p>
         <h1 style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,
