@@ -53,6 +53,10 @@ export default async function KuponEklePage({
         <Field label="Kupon Tipi">
           <select name="coupon_type" required style={inputStyle}>
             <option value="Banko">Banko</option>
+            <option value="BTTS">BTTS (KG Var)</option>
+            <option value="Alt/Üst 2.5">Alt/Üst 2.5</option>
+            <option value="Alt/Üst 1.5">Alt/Üst 1.5</option>
+            <option value="Korner">Korner</option>
             <option value="xG Canavarı">xG Canavarı</option>
             <option value="Premium Sürpriz">Premium Sürpriz</option>
           </select>

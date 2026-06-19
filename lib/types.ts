@@ -26,6 +26,16 @@ export type Last5Data = {
   yellow_cards: number
   red_cards: number
   matches: Last5Match[]
+  avg_shots?: number
+  avg_shots_on_target?: number
+  avg_possession?: number
+  avg_pass_accuracy?: number
+  avg_corners?: number
+  avg_fouls?: number
+  avg_goals_first_half?: number
+  avg_goals_second_half?: number
+  avg_conceded_first_half?: number
+  avg_conceded_second_half?: number
 }
 
 export type Match = {
@@ -68,7 +78,7 @@ export type Match = {
   created_at: string
 }
 
-export type CouponType = 'Banko' | 'xG Canavarı' | 'Premium Sürpriz'
+export type CouponType = 'Banko' | 'xG Canavarı' | 'Premium Sürpriz' | 'BTTS' | 'Alt/Üst 2.5' | 'Alt/Üst 1.5' | 'Korner'
 
 export type Coupon = {
   id: string

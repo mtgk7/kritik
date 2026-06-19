@@ -195,6 +195,21 @@ export default function MatchListClient({ matches, isPremium, favTeams = [] }: P
   )
 }
 
+function FormChip({ score }: { score: number }) {
+  const isGood = score >= 2.0
+  const isOk   = score >= 1.2
+  const color  = isGood ? 'oklch(55% 0.18 145)' : isOk ? 'oklch(65% 0.18 75)' : 'oklch(55% 0.18 25)'
+  return (
+    <span style={{
+      fontSize: '0.62rem', fontWeight: 700, padding: '0.15rem 0.38rem',
+      borderRadius: '4px', lineHeight: 1, flexShrink: 0,
+      background: color + '22', color, border: `1px solid ${color}55`,
+    }}>
+      {score.toFixed(1)}
+    </span>
+  )
+}
+
 function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast: boolean; unlocked: boolean; isFavTeam: boolean }) {
   const conf     = match.confidence_score ?? 0
   const confPct  = Math.round(conf * 100)
@@ -235,6 +250,9 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
             }}>
               {translateTeam(match.home_team)}
             </span>
+            {!isFinished && unlocked && match.home_form_score != null && (
+              <FormChip score={match.home_form_score} />
+            )}
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>vs</span>
             <span style={{
               fontFamily: 'var(--font-display)', fontWeight: 700,
@@ -243,6 +261,9 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
             }}>
               {translateTeam(match.away_team)}
             </span>
+            {!isFinished && unlocked && match.away_form_score != null && (
+              <FormChip score={match.away_form_score} />
+            )}
             {!isFinished && match.prediction && (
               match.prediction === '__locked__' ? (
                 <span aria-hidden="true" style={{
