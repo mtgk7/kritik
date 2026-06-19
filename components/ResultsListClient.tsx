@@ -57,7 +57,7 @@ export default function ResultsListClient({ matches }: Props) {
     const map: Record<string, Match[]> = {}
     for (const m of filtered) {
       const d = new Date(m.match_time).toLocaleDateString('tr-TR', {
-        timeZone: 'Europe/Istanbul',
+        timeZone: 'UTC',
         day: 'numeric', month: 'long', year: 'numeric',
       })
       if (!map[d]) map[d] = []

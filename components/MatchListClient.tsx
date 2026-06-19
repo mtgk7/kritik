@@ -222,7 +222,7 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
     conf >= 0.55 ? 'var(--color-warning)'  :
     'var(--color-text-tertiary)'
 
-  const TZ = 'Europe/Istanbul'
+  const TZ = 'UTC'
   const matchDate = new Date(match.match_time)
   const todayStr  = new Date().toLocaleDateString('tr-TR', { timeZone: TZ, day: 'numeric', month: 'numeric', year: 'numeric' })
   const matchStr  = matchDate.toLocaleDateString('tr-TR', { timeZone: TZ, day: 'numeric', month: 'numeric', year: 'numeric' })
