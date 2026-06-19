@@ -295,7 +295,7 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
             )}
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
             {!isLive && (
               <span style={{ fontSize: '0.75rem', color: isFinished ? 'var(--color-text-tertiary)' : 'var(--color-text-secondary)', fontWeight: 500 }}>
                 {dateLabel}
@@ -316,6 +316,30 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
                 AI tahmin · xG · kadro — <span style={{ color: 'var(--color-premium)', fontWeight: 600 }}>Premium</span>
               </span>
             )}
+            {/* Piyasa oranları — herkese açık */}
+            {!isFinished && match.market_odds && (match.market_odds.ms1 ?? match.market_odds.ms2) && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>{match.market_odds.ms1?.toFixed(2)}</span>
+                <span>·</span>
+                <span>{match.market_odds.x?.toFixed(2)}</span>
+                <span>·</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>{match.market_odds.ms2?.toFixed(2)}</span>
+              </span>
+            )}
+            {/* Alt/Üst 2.5 zımni olasılık */}
+            {!isFinished && match.market_odds?.over25 && (() => {
+              const pct = Math.round((1 / match.market_odds!.over25!) * 100)
+              const col = pct >= 60 ? 'oklch(55% 0.18 145)' : pct >= 50 ? 'oklch(65% 0.18 75)' : 'var(--color-text-tertiary)'
+              return (
+                <span style={{
+                  fontSize: '0.65rem', fontWeight: 700, padding: '0.12rem 0.38rem',
+                  borderRadius: '4px', background: col + '18', color: col,
+                  border: `1px solid ${col}44`,
+                }}>
+                  Üst 2.5 %{pct}
+                </span>
+              )
+            })()}
           </div>
         </div>
 
