@@ -89,6 +89,33 @@ def _poisson_over25(home_xg: float, away_xg: float) -> int:
     return round((1 - p0 - p1 - p2) * 100)
 
 
+def _poisson_1x2(home_xg: float, away_xg: float) -> tuple[int, int, int]:
+    """
+    Dixon-Coles yaklaşımı: xG'den MS1 / X / MS2 olasılıkları.
+    Her takım bağımsız Poisson dağılımı varsayılır; 0-10 gol truncate.
+    """
+    MAX = 11
+    lh  = max(home_xg, 0.05)
+    la  = max(away_xg, 0.05)
+
+    # P(home=k) ve P(away=k) tabloları
+    ph = [math.exp(-lh) * lh**k / math.factorial(k) for k in range(MAX)]
+    pa = [math.exp(-la) * la**k / math.factorial(k) for k in range(MAX)]
+
+    ms1 = x = ms2 = 0.0
+    for h in range(MAX):
+        for a in range(MAX):
+            p = ph[h] * pa[a]
+            if h > a:   ms1 += p
+            elif h == a: x  += p
+            else:        ms2 += p
+
+    total = ms1 + x + ms2
+    if total == 0:
+        return 40, 30, 30
+    return round(ms1 / total * 100), round(x / total * 100), round(ms2 / total * 100)
+
+
 def _split_missing(missing_players: list[dict]) -> tuple[list[dict], list[dict]]:
     """missing_players listesini sakat ve cezalı olarak ikiye ayırır."""
     injured    = [p for p in missing_players if p.get("reason", "").lower() != "ceza"]
@@ -157,6 +184,7 @@ def _build_prompt(
     h_btts = _calc_btts_stats(home_id, home_last5)
     a_btts = _calc_btts_stats(away_id, away_last5)
     poisson_o25 = _poisson_over25(home_xg, away_xg)
+    p_ms1, p_x, p_ms2 = _poisson_1x2(home_xg, away_xg)
 
     def _pct(n: int, d: int) -> str:
         return f"{n}/{d} (%{round(n/d*100) if d else 0})"
@@ -167,7 +195,9 @@ def _build_prompt(
         f"## Gol Eğilimi (son {h_btts_n} maç)\n"
         f"{home_team}: KG Var {_pct(h_btts['btts'], h_btts_n)} | 2.5 Üst {_pct(h_btts['over25'], h_btts_n)} | Gol Attı {_pct(h_btts['scored'], h_btts_n)} | Gol Yedi {_pct(h_btts['conceded'], h_btts_n)}\n"
         f"{away_team}: KG Var {_pct(a_btts['btts'], a_btts_n)} | 2.5 Üst {_pct(a_btts['over25'], a_btts_n)} | Gol Attı {_pct(a_btts['scored'], a_btts_n)} | Gol Yedi {_pct(a_btts['conceded'], a_btts_n)}\n"
-        f"xG tabanlı 2.5 Üst ihtimali: %{poisson_o25}"
+        f"xG tabanlı 2.5 Üst ihtimali: %{poisson_o25}\n\n"
+        f"## Poisson Modeli (Dixon-Coles, xG={home_xg:.2f}/{away_xg:.2f})\n"
+        f"MS1 %{p_ms1} | X %{p_x} | MS2 %{p_ms2} | 2.5 Üst %{poisson_o25}"
     )
 
     # Üçüncü taraf tahmin bloğu (varsa)
