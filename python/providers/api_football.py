@@ -176,6 +176,83 @@ def _safe_float(val) -> float | None:
         return None
 
 
+_FIXTURES_BY_DATE_CACHE: dict[tuple, list[dict]] = {}
+_NORM_RE = None
+
+
+def _norm_name(name: str) -> str:
+    import re
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def _get_fixtures_by_date(league_id: int, season: int, date_str: str) -> list[dict]:
+    """Tarih+lig için api-football fixture listesi — run boyunca önbellekte."""
+    key = (league_id, season, date_str)
+    if key not in _FIXTURES_BY_DATE_CACHE:
+        try:
+            data = _get("fixtures", {"league": league_id, "season": season, "date": date_str})
+            _FIXTURES_BY_DATE_CACHE[key] = data.get("response", [])
+        except Exception:
+            _FIXTURES_BY_DATE_CACHE[key] = []
+    return _FIXTURES_BY_DATE_CACHE[key]
+
+
+def find_afl_fixture_id(home_team: str, away_team: str,
+                         date_str: str, league_id: int, season: int) -> int | None:
+    """
+    Takım adı + tarih + lig ile api-football fixture ID'yi bulur.
+    Fuzzy eşleşme: normalize edilmiş ismin bir diğerini içermesi yeterli.
+    """
+    fixtures = _get_fixtures_by_date(league_id, season, date_str)
+    hn = _norm_name(home_team)
+    an = _norm_name(away_team)
+    for fx in fixtures:
+        h = _norm_name(fx["teams"]["home"]["name"])
+        a = _norm_name(fx["teams"]["away"]["name"])
+        if (hn in h or h in hn) and (an in a or a in an):
+            return fx["fixture"]["id"]
+    return None
+
+
+def get_predictions(fixture_id: int) -> dict | None:
+    """
+    Fixture için api-football tahmin verisini döndürür.
+    Dönen format:
+      {
+        "percent": {"home": "45%", "draw": "35%", "away": "20%"},
+        "advice":  "Home win",
+        "comparison": {"form": {...}, "h2h": {...}, "att": {...}, "def": {...}},
+        "h2h_summary": {"btts": 3, "over25": 4, "played": 6}
+      }
+    """
+    try:
+        data = _get("predictions", {"fixture": fixture_id})
+        resp = data.get("response", [])
+        if not resp:
+            return None
+        item = resp[0]
+        preds   = item.get("predictions", {})
+        percent = preds.get("percent", {})
+        advice  = preds.get("advice", "")
+        comp    = item.get("comparison", {})
+
+        # H2H özeti — BTTS ve 2.5 Üst sayıları
+        h2h     = item.get("h2h", [])
+        h2h_btts  = sum(1 for m in h2h if (m.get("goals", {}).get("home") or 0) > 0
+                        and (m.get("goals", {}).get("away") or 0) > 0)
+        h2h_over25 = sum(1 for m in h2h if ((m.get("goals", {}).get("home") or 0)
+                         + (m.get("goals", {}).get("away") or 0)) > 2)
+
+        return {
+            "percent":     percent,
+            "advice":      advice,
+            "comparison":  comp,
+            "h2h_summary": {"played": len(h2h), "btts": h2h_btts, "over25": h2h_over25},
+        }
+    except Exception:
+        return None
+
+
 def get_injuries(team_id: int, league_id: int, season: int) -> list[dict]:
     """
     Sakatlık ve ceza (süspansiyon) listesi.

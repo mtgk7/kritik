@@ -130,6 +130,7 @@ def _build_prompt(
     home_xg: float, away_xg: float,
     home_injury: float, away_injury: float,
     missing_players: list[dict],
+    third_party_pred: dict | None = None,
 ) -> str:
     home_id = _find_team_id(home_team, home_last5)
     away_id = _find_team_id(away_team, away_last5)
@@ -169,6 +170,32 @@ def _build_prompt(
         f"xG tabanlı 2.5 Üst ihtimali: %{poisson_o25}"
     )
 
+    # Üçüncü taraf tahmin bloğu (varsa)
+    third_party_block = ""
+    if third_party_pred:
+        pct  = third_party_pred.get("percent", {})
+        adv  = third_party_pred.get("advice", "")
+        comp = third_party_pred.get("comparison", {})
+        h2h_s = third_party_pred.get("h2h_summary", {})
+
+        def _fmt_cmp(key: str) -> str:
+            c = comp.get(key, {})
+            return f"Ev %{c.get('home','?')} / Dep %{c.get('away','?')}"
+
+        h2h_line = ""
+        if h2h_s.get("played"):
+            h2h_line = (f"\nH2H son {h2h_s['played']} maç — "
+                        f"KG Var: {h2h_s['btts']}/{h2h_s['played']}, "
+                        f"2.5 Üst: {h2h_s['over25']}/{h2h_s['played']}")
+
+        third_party_block = (
+            f"\n## Üçüncü Taraf Tahmin (api-football istatistik motoru)\n"
+            f"MS1 %{pct.get('home','?')} | X %{pct.get('draw','?')} | MS2 %{pct.get('away','?')}\n"
+            f"Tavsiye: {adv}\n"
+            f"Form: {_fmt_cmp('form')} | Atak: {_fmt_cmp('att')} | Savunma: {_fmt_cmp('def')} | H2H: {_fmt_cmp('h2h')}"
+            f"{h2h_line}"
+        )
+
     prompt = f"""Sen bir futbol analiz uzmanısın. Aşağıdaki gerçek istatistikleri kullanarak {home_team} - {away_team} maçı için Türkçe analiz yaz.
 
 KURAL: Sadece verilen sayıları kullan. Hiçbir istatistiği uydurma.
@@ -185,7 +212,7 @@ Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']}
 Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}
 Kartlar: {a_card_str}
 
-{btts_block}
+{btts_block}{third_party_block}
 
 ## Kadro Durumu
 Form skoru: {home_team} %{round(home_form*100)} — {away_team} %{round(away_form*100)}
@@ -196,6 +223,7 @@ Sakatlık etkisi: {home_team} %{round(home_injury*100)} — {away_team} %{round(
 - {home_team}'in son form ve gol istatistiklerini gerçek rakamlarla belirt.
 - {away_team}'in son form ve gol istatistiklerini gerçek rakamlarla belirt.
 - KG Var / 2.5 Üst eğilimi güçlüyse bunu vurgula.
+- Üçüncü taraf tahmin verileri varsa bunları kendi analizinle karşılaştır; varsa anlaşmazlığı belirt.
 - Sarı/kırmızı kart baskısı önemliyse belirt.
 - Sakat veya cezalı oyuncu varsa bir cümleyle belirt (adlarını yaz).
 - Rakamları olduğu gibi kullan; farklı sayı yazma.
@@ -292,6 +320,7 @@ def analyze_with_claude(
     home_xg: float, away_xg: float,
     home_injury: float, away_injury: float,
     missing_players: list[dict],
+    third_party_pred: dict | None = None,
 ) -> dict:
     """
     Claude ile maç analizi yapar.
@@ -330,6 +359,7 @@ def analyze_with_claude(
             home_xg, away_xg,
             home_injury, away_injury,
             missing_players,
+            third_party_pred=third_party_pred,
         )
 
         message = client.messages.create(

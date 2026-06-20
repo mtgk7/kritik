@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import schedule
 
-from config import PROVIDER, FOOTBALL_DATA_LEAGUES, LEAGUE_IDS
+from config import PROVIDER, FOOTBALL_DATA_LEAGUES, LEAGUE_IDS, API_KEY
 from api_client import get_fixtures, current_league_season, get_last5_summary
 from analyzer import (
     calc_form_score,
@@ -219,6 +219,13 @@ def _build_last5_summary(team_name: str, team_id: int, fixtures: list[dict], car
 
 # ── Ana görev ─────────────────────────────────────────────────────────────────
 
+# football-data.org lig kodu → api-football lig ID eşlemesi (tahmin için)
+_FD_TO_AFL: dict[str, int] = {
+    "WC": 1, "PL": 39, "PD": 140, "BL1": 78, "SA": 135, "FL1": 61,
+    "CL": 2, "EL": 3, "PPL": 94, "DED": 88,
+}
+
+
 def run():
     log.info("=== Kritik Data Bot başlatıldı ===")
     analyzed_all = []
@@ -286,6 +293,25 @@ def run():
                     if away_last5_data is None:
                         away_last5_data = _build_last5_summary(away_name, away_id, away_last5, away_cards)
 
+                # api-football tahmin motoru (üçüncü taraf görüş)
+                third_party_pred = None
+                if API_KEY:
+                    try:
+                        from providers.api_football import find_afl_fixture_id, get_predictions as _get_preds
+                        afl_league_id = _FD_TO_AFL.get(str(league_ref))
+                        if afl_league_id:
+                            match_date = str(match_time)[:10]
+                            afl_fx_id = find_afl_fixture_id(
+                                home_name, away_name, match_date, afl_league_id, season
+                            )
+                            if afl_fx_id:
+                                third_party_pred = _get_preds(afl_fx_id)
+                                if third_party_pred:
+                                    pct = third_party_pred.get("percent", {})
+                                    log.info(f"    3. taraf: MS1 {pct.get('home','?')} | X {pct.get('draw','?')} | MS2 {pct.get('away','?')}")
+                    except Exception as _e:
+                        log.debug(f"    3. taraf tahmin alınamadı: {_e}")
+
                 # Claude AI analizi (API key yoksa kural tabanlı)
                 ai_result = analyze_with_claude(
                     home_name, away_name,
@@ -295,6 +321,7 @@ def run():
                     home_xg_raw, away_xg_raw,
                     home_inj, away_inj,
                     home_missing + away_missing,
+                    third_party_pred=third_party_pred,
                 )
 
                 all_missing = [
