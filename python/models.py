@@ -35,6 +35,7 @@ class MatchRecord(BaseModel):
     away_last5_data: Optional[dict] = None  # Son 5 maç özeti — deplasman
     league_name: str = "Genel"              # Turnuva / Lig adı
     is_free_preview: bool = False           # Ücretsiz vitrin maçı mı?
+    market_odds: Optional[dict] = None      # {ms1, x, ms2, over25, under25}
 
     @field_validator("home_xg", "away_xg", mode="before")
     @classmethod
@@ -81,6 +82,7 @@ class MatchRecord(BaseModel):
             "away_last5_data":  self.away_last5_data,
             "league_name":      self.league_name,
             "is_free_preview":  self.is_free_preview,
+            "market_odds":      self.market_odds,
         }
 
 

@@ -114,6 +114,68 @@ def get_last5_card_stats(team_id: int, league_id: int, season: int) -> dict:
     }
 
 
+def get_fixture_odds(fixture_id: int, bookmaker_id: int = 8) -> dict | None:
+    """
+    Fixture için MS1/X/MS2 ve 2.5 Üst/Alt oranlarını döndürür.
+    Bookmaker 8 = Bet365 (yaygın, çoğu maçta var).
+    Dönen format: {ms1, x, ms2, over25, under25} veya None.
+    """
+    try:
+        data = _get("odds", {"fixture": fixture_id, "bookmaker": bookmaker_id, "bet": "1,5"})
+    except Exception:
+        return None
+
+    response = data.get("response", [])
+    if not response:
+        # Bet365 yoksa bookmaker filtresi olmadan dene
+        try:
+            data = _get("odds", {"fixture": fixture_id, "bet": "1,5"})
+            response = data.get("response", [])
+        except Exception:
+            return None
+    if not response:
+        return None
+
+    ms1 = x = ms2 = over25 = under25 = None
+    for bookmaker in response[0].get("bookmakers", []):
+        for bet in bookmaker.get("bets", []):
+            bet_id   = bet.get("id")
+            bet_name = (bet.get("name") or "").upper()
+            values   = bet.get("values", [])
+            if bet_id == 1 or "MATCH WINNER" in bet_name or "1X2" in bet_name:
+                for v in values:
+                    val  = str(v.get("value", "")).upper()
+                    odd  = _safe_float(v.get("odd"))
+                    if val in ("HOME", "1"):
+                        ms1 = odd
+                    elif val in ("DRAW", "X"):
+                        x = odd
+                    elif val in ("AWAY", "2"):
+                        ms2 = odd
+            elif bet_id == 5 or "OVER/UNDER" in bet_name or "GOALS" in bet_name:
+                for v in values:
+                    val  = str(v.get("value", "")).upper()
+                    odd  = _safe_float(v.get("odd"))
+                    if "OVER" in val and "2.5" in val:
+                        over25 = odd
+                    elif "UNDER" in val and "2.5" in val:
+                        under25 = odd
+        if ms1 and ms2:
+            break
+
+    if not (ms1 and ms2):
+        return None
+    return {"ms1": ms1, "x": x, "ms2": ms2, "over25": over25, "under25": under25}
+
+
+def _safe_float(val) -> float | None:
+    try:
+        v = float(val or 0)
+        return v if v > 1.0 else None
+    except Exception:
+        return None
+
+
 def get_injuries(team_id: int, league_id: int, season: int) -> list[dict]:
     """
     Sakatlık ve ceza (süspansiyon) listesi.
