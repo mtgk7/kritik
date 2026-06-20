@@ -8,6 +8,7 @@ ANTHROPIC_API_KEY ayarlanmamışsa kural+istatistik tabanlı metne döner.
 """
 
 import os
+import math
 import logging
 
 log = logging.getLogger("kritik-bot.predictor")
@@ -59,6 +60,33 @@ def _calc_team_stats(team_id: int | None, fixtures: list[dict]) -> dict:
         "goals_for":     goals_for,
         "goals_against": goals_against,
     }
+
+
+def _calc_btts_stats(team_id: int | None, fixtures: list[dict]) -> dict:
+    """Son N maçtan KG Var ve 2.5 Üst sayılarını hesaplar."""
+    btts = over25 = scored = conceded = played = 0
+    for m in fixtures:
+        home  = m["teams"]["home"]
+        goals = m.get("goals", {})
+        h_g   = goals.get("home") or 0
+        a_g   = goals.get("away") or 0
+        my_g  = h_g if home.get("id") == team_id else a_g
+        op_g  = a_g if home.get("id") == team_id else h_g
+        if my_g > 0 and op_g > 0: btts += 1
+        if (my_g + op_g) > 2:     over25 += 1
+        if my_g > 0:  scored   += 1
+        if op_g > 0:  conceded += 1
+        played += 1
+    return {"played": played, "btts": btts, "over25": over25, "scored": scored, "conceded": conceded}
+
+
+def _poisson_over25(home_xg: float, away_xg: float) -> int:
+    """xG toplamına dayalı Poisson ile 2.5 Üst ihtimali (0-100)."""
+    lam = max(home_xg + away_xg, 0.1)
+    p0  = math.exp(-lam)
+    p1  = lam * p0
+    p2  = (lam ** 2 / 2) * p0
+    return round((1 - p0 - p1 - p2) * 100)
 
 
 def _split_missing(missing_players: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -124,6 +152,23 @@ def _build_prompt(
     h_card_str = f"Son {hc['played']} maçta {hc['yellow_cards']} sarı, {hc['red_cards']} kırmızı kart" if hc.get("played") else "Kart verisi yok"
     a_card_str = f"Son {ac['played']} maçta {ac['yellow_cards']} sarı, {ac['red_cards']} kırmızı kart" if ac.get("played") else "Kart verisi yok"
 
+    # BTTS ve Over/Under istatistikleri
+    h_btts = _calc_btts_stats(home_id, home_last5)
+    a_btts = _calc_btts_stats(away_id, away_last5)
+    poisson_o25 = _poisson_over25(home_xg, away_xg)
+
+    def _pct(n: int, d: int) -> str:
+        return f"{n}/{d} (%{round(n/d*100) if d else 0})"
+
+    h_btts_n  = h_btts["played"] or 1
+    a_btts_n  = a_btts["played"] or 1
+    btts_block = (
+        f"## Gol Eğilimi (son {h_btts_n} maç)\n"
+        f"{home_team}: KG Var {_pct(h_btts['btts'], h_btts_n)} | 2.5 Üst {_pct(h_btts['over25'], h_btts_n)} | Gol Attı {_pct(h_btts['scored'], h_btts_n)} | Gol Yedi {_pct(h_btts['conceded'], h_btts_n)}\n"
+        f"{away_team}: KG Var {_pct(a_btts['btts'], a_btts_n)} | 2.5 Üst {_pct(a_btts['over25'], a_btts_n)} | Gol Attı {_pct(a_btts['scored'], a_btts_n)} | Gol Yedi {_pct(a_btts['conceded'], a_btts_n)}\n"
+        f"xG tabanlı 2.5 Üst ihtimali: %{poisson_o25}"
+    )
+
     prompt = f"""Sen bir futbol analiz uzmanısın. Aşağıdaki gerçek istatistikleri kullanarak {home_team} - {away_team} maçı için Türkçe analiz yaz.
 
 KURAL: Sadece verilen sayıları kullan. Hiçbir istatistiği uydurma.
@@ -140,6 +185,8 @@ Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']}
 Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}
 Kartlar: {a_card_str}
 
+{btts_block}
+
 ## Kadro Durumu
 Form skoru: {home_team} %{round(home_form*100)} — {away_team} %{round(away_form*100)}
 Sakatlık etkisi: {home_team} %{round(home_injury*100)} — {away_team} %{round(away_injury*100)}{eksik}
@@ -148,6 +195,7 @@ Sakatlık etkisi: {home_team} %{round(home_injury*100)} — {away_team} %{round(
 5-6 cümle Türkçe analiz yaz:
 - {home_team}'in son form ve gol istatistiklerini gerçek rakamlarla belirt.
 - {away_team}'in son form ve gol istatistiklerini gerçek rakamlarla belirt.
+- KG Var / 2.5 Üst eğilimi güçlüyse bunu vurgula.
 - Sarı/kırmızı kart baskısı önemliyse belirt.
 - Sakat veya cezalı oyuncu varsa bir cümleyle belirt (adlarını yaz).
 - Rakamları olduğu gibi kullan; farklı sayı yazma.
@@ -160,7 +208,7 @@ ALT1: [tahmin] %[güven]
 ALT2: [tahmin] %[güven]
 ---SON---
 
-Tahmin seçenekleri: MS1, MS2, X, 2.5 Üst, 2.5 Alt
+Tahmin seçenekleri: MS1, MS2, X, 2.5 Üst, 2.5 Alt, KG Var, KG Yok
 Güven yüzdeleri toplamı 100 olmalı."""
 
     return prompt
@@ -382,11 +430,13 @@ def _parse_predictions(
 
 def _normalize_pred(code: str) -> str:
     c = code.lower().strip()
-    if "ms1" in c or "ev sahi" in c: return "MS1"
-    if "ms2" in c or "deplasm" in c: return "MS2"
-    if c == "x" or "beraberlik" in c: return "X"
-    if "üst" in c or "ust" in c: return "2.5 Üst"
-    if "alt" in c: return "2.5 Alt"
+    if "ms1" in c or "ev sahi" in c:                    return "MS1"
+    if "ms2" in c or "deplasm" in c:                    return "MS2"
+    if c == "x" or "beraberlik" in c:                   return "X"
+    if "üst" in c or "ust" in c:                        return "2.5 Üst"
+    if "alt" in c:                                       return "2.5 Alt"
+    if "kg var" in c or "btts" in c or "karşıl" in c: return "KG Var"
+    if "kg yok" in c or "clean" in c:                   return "KG Yok"
     return code.upper()
 
 
@@ -405,9 +455,10 @@ def _rule_based(
     xg_diff   = (home_xg   - away_xg)   * 0.40
     net       = form_diff + xg_diff + 0.05
 
-    home_adj = home_xg * (1 - home_injury)
-    away_adj = away_xg * (1 - away_injury)
-    total_xg = home_adj + away_adj
+    home_adj    = home_xg * (1 - home_injury)
+    away_adj    = away_xg * (1 - away_injury)
+    total_xg    = home_adj + away_adj
+    poisson_o25 = _poisson_over25(home_xg, away_xg)
 
     if abs(net) < 0.08:
         main, c1 = ("2.5 Üst", 55) if total_xg > 2.5 else ("2.5 Alt", 55)
@@ -426,6 +477,10 @@ def _rule_based(
             {"prediction": "X",   "confidence": max(10, 30 - int(abs(net)*50))},
             {"prediction": "MS1", "confidence": max(5,  20 - int(abs(net)*50))},
         ]
+
+    # KG Var alternatif — Poisson 2.5 Üst yüksekse ekle
+    if poisson_o25 >= 60 and "KG Var" not in [a["prediction"] for a in alts]:
+        alts.append({"prediction": "KG Var", "confidence": min(poisson_o25 - 10, 35)})
 
     total_alt = sum(a["confidence"] for a in alts)
     c1 = 100 - total_alt
