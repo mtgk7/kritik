@@ -48,7 +48,7 @@ def _get_odds_by_date(date_str: str) -> list[dict]:
     try:
         r = _session().get(
             f"https://{API_HOST}/odds",
-            params={"date": date_str, "bookmaker": BOOKMAKER_ID, "bet": "1,5"},
+            params={"date": date_str, "bookmaker": BOOKMAKER_ID},
             timeout=20,
         )
         r.raise_for_status()

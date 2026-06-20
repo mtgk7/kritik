@@ -121,7 +121,7 @@ def get_fixture_odds(fixture_id: int, bookmaker_id: int = 8) -> dict | None:
     Dönen format: {ms1, x, ms2, over25, under25} veya None.
     """
     try:
-        data = _get("odds", {"fixture": fixture_id, "bookmaker": bookmaker_id, "bet": "1,5"})
+        data = _get("odds", {"fixture": fixture_id, "bookmaker": bookmaker_id})
     except Exception:
         return None
 
@@ -129,7 +129,7 @@ def get_fixture_odds(fixture_id: int, bookmaker_id: int = 8) -> dict | None:
     if not response:
         # Bet365 yoksa bookmaker filtresi olmadan dene
         try:
-            data = _get("odds", {"fixture": fixture_id, "bet": "1,5"})
+            data = _get("odds", {"fixture": fixture_id})
             response = data.get("response", [])
         except Exception:
             return None
