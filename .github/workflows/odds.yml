@@ -35,4 +35,6 @@ jobs:
         env:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+          API_FOOTBALL_HOST:    v3.football.api-sports.io
         run: python odds_cron.py --once
