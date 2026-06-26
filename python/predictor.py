@@ -271,7 +271,13 @@ ALT2: [tahmin] %[güven]
 ---SON---
 
 Tahmin seçenekleri: MS1, MS2, X, 2.5 Üst, 2.5 Alt, KG Var, KG Yok
-Güven yüzdeleri toplamı 100 olmalı."""
+Güven yüzdeleri toplamı 100 olmalı.
+
+Gol tahmini rehberi:
+- Poisson 2.5 Üst %62+ VE her iki takım da son maçlarda gol attıysa → ANA: KG Var veya 2.5 Üst
+- Toplam xG <1.8 ve Poisson 2.5 Üst <%35 → ANA: 2.5 Alt
+- Her iki takım da maç başı >1.2 gol ortalamasına sahipse ve kazanan belirsizse → ANA: KG Var
+- 1x2 tahmini belirliyse ama gol sinyali güçlüyse → ALT olarak gol tahmini ekle"""
 
     return prompt
 
@@ -525,7 +531,7 @@ def _rule_based(
     missing_players: list[dict],
     league_ref: str | int = "",
 ) -> dict:
-    # Tarafsız saha tespiti — WC gibi liglerde ev sahibi avantajı sıfır
+    # Tarafsız saha tespiti
     try:
         is_neutral = int(league_ref) in NEUTRAL_VENUE_LEAGUES
     except (ValueError, TypeError):
@@ -536,6 +542,7 @@ def _rule_based(
     form_diff = (home_form - away_form) * 0.35
     xg_diff   = (home_xg   - away_xg)   * 0.40
     net       = form_diff + xg_diff + home_bonus
+    abs_net   = abs(net)
 
     home_adj    = home_xg * (1 - home_injury)
     away_adj    = away_xg * (1 - away_injury)
@@ -543,61 +550,104 @@ def _rule_based(
     poisson_o25 = _poisson_over25(home_xg, away_xg)
     p_ms1, p_x, p_ms2 = _poisson_1x2(home_xg, away_xg)
 
-    # Beraberlik sinyali: net fark küçük VEYA Poisson X yüksekse
-    draw_signal = abs(net) < DRAW_THRESHOLD or p_x >= 28
+    # ── Gol piyasası sinyalleri ──────────────────────────────────────────────
+    # KG Var: her iki takım da maç başı ortalama ≥1.2 gol atıyorsa
+    btts_signal   = home_adj >= 1.20 and away_adj >= 1.20
+    # 2.5 Üst: Poisson ≥62% ve toplam xG yüksek
+    over25_signal  = poisson_o25 >= 62 and total_xg >= 2.5
+    # 2.5 Alt: Poisson ≤33% ve toplam xG düşük
+    under25_signal = poisson_o25 <= 33 and total_xg < 1.8
 
-    if draw_signal:
-        # Beraberlik bölgesi: X veya gol tahmini
-        if total_xg > 2.6:
-            # Gol beklentisi yüksek → 2.5 Üst + alternatif X
+    # Beraberlik bölgesi: net fark küçük VEYA X olasılığı yüksek
+    draw_zone = abs_net < DRAW_THRESHOLD or p_x >= 28
+
+    # ── Ana tahmin seçimi ────────────────────────────────────────────────────
+    if draw_zone:
+        if btts_signal and over25_signal:
+            main = "KG Var"
+            alts = [
+                {"prediction": "2.5 Üst", "confidence": min(poisson_o25 - 5, 32)},
+                {"prediction": "X",       "confidence": max(p_x, 18)},
+            ]
+        elif over25_signal:
             main = "2.5 Üst"
             alts = [
-                {"prediction": "X",   "confidence": max(p_x, 22)},
+                {"prediction": "X",   "confidence": max(p_x, 20)},
                 {"prediction": "MS1", "confidence": max(p_ms1 - 5, 12)},
             ]
-        elif total_xg < 1.8:
-            # Az gol beklentisi → 2.5 Alt
+        elif under25_signal:
             main = "2.5 Alt"
             alts = [
-                {"prediction": "X",   "confidence": max(p_x, 25)},
+                {"prediction": "X",   "confidence": max(p_x, 22)},
                 {"prediction": "MS1", "confidence": max(p_ms1 - 5, 10)},
             ]
         else:
-            # Belirsiz → X tahmini
             main = "X"
             alts = [
-                {"prediction": "MS1",   "confidence": max(p_ms1 - 5, 18)},
+                {"prediction": "MS1",     "confidence": max(p_ms1 - 5, 18)},
                 {"prediction": "2.5 Üst", "confidence": min(poisson_o25, 20)},
             ]
+
     elif net > 0:
-        # MS1 bölgesi — güçlü ev/form avantajı
-        strength = min(abs(net) * 100, 30)
-        main = "MS1"
-        alts = [
-            {"prediction": "X",   "confidence": max(int(30 - strength), 12)},
-            {"prediction": "MS2", "confidence": max(int(15 - strength), 5)},
-        ]
-    else:
-        # MS2 bölgesi — daha güçlü sinyal gerekir
-        # MS2_MIN_NET eşiğini geçmeden X'e düşür
-        if abs(net) < MS2_MIN_NET:
-            main = "X"
+        # MS1 bölgesi
+        strength = min(abs_net * 100, 30)
+        if abs_net < 0.22 and btts_signal:
+            # Hafif favori + her iki takım gol atıyor → KG Var alternatif
+            main = "MS1"
             alts = [
-                {"prediction": "MS2",     "confidence": max(p_ms2 - 5, 15)},
-                {"prediction": "2.5 Üst", "confidence": min(poisson_o25, 18)},
+                {"prediction": "KG Var", "confidence": min(int(home_adj * away_adj * 20), 28)},
+                {"prediction": "X",      "confidence": max(int(30 - strength), 12)},
+            ]
+        elif abs_net < 0.22 and over25_signal:
+            # Hafif favori + yüksek gol beklentisi → 2.5 Üst alternatif
+            main = "MS1"
+            alts = [
+                {"prediction": "2.5 Üst", "confidence": min(poisson_o25 - 8, 28)},
+                {"prediction": "X",       "confidence": max(int(30 - strength), 12)},
             ]
         else:
-            strength = min(abs(net) * 100, 25)
-            main = "MS2"
+            main = "MS1"
             alts = [
-                {"prediction": "X",   "confidence": max(int(28 - strength), 12)},
-                {"prediction": "MS1", "confidence": max(int(12 - strength), 5)},
+                {"prediction": "X",   "confidence": max(int(30 - strength), 12)},
+                {"prediction": "MS2", "confidence": max(int(15 - strength), 5)},
             ]
 
-    # KG Var alternatif — Poisson 2.5 Üst yüksekse ve alternatifler arasında yoksa
-    alt_preds = [a["prediction"] for a in alts]
-    if poisson_o25 >= 62 and "KG Var" not in alt_preds and "2.5 Üst" not in alt_preds:
-        alts.append({"prediction": "KG Var", "confidence": min(poisson_o25 - 12, 28)})
+    else:
+        # MS2 bölgesi — yeterli sinyal yoksa gol tahminine düş
+        if abs_net < MS2_MIN_NET:
+            if btts_signal:
+                main = "KG Var"
+                alts = [
+                    {"prediction": "X",   "confidence": max(p_x, 22)},
+                    {"prediction": "MS2", "confidence": max(p_ms2 - 5, 12)},
+                ]
+            elif over25_signal:
+                main = "2.5 Üst"
+                alts = [
+                    {"prediction": "X",   "confidence": max(p_x, 22)},
+                    {"prediction": "MS2", "confidence": max(p_ms2 - 5, 12)},
+                ]
+            else:
+                main = "X"
+                alts = [
+                    {"prediction": "MS2",     "confidence": max(p_ms2 - 5, 15)},
+                    {"prediction": "2.5 Üst", "confidence": min(poisson_o25, 18)},
+                ]
+        else:
+            # MS2 güçlü
+            strength = min(abs_net * 100, 25)
+            if abs_net < 0.22 and btts_signal:
+                main = "MS2"
+                alts = [
+                    {"prediction": "KG Var", "confidence": min(int(home_adj * away_adj * 20), 28)},
+                    {"prediction": "X",      "confidence": max(int(28 - strength), 12)},
+                ]
+            else:
+                main = "MS2"
+                alts = [
+                    {"prediction": "X",   "confidence": max(int(28 - strength), 12)},
+                    {"prediction": "MS1", "confidence": max(int(12 - strength), 5)},
+                ]
 
     total_alt = sum(a["confidence"] for a in alts[:2])
     c1 = max(100 - total_alt, 40)
