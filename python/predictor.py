@@ -149,6 +149,16 @@ def _match_lines(team_id: int | None, fixtures: list[dict]) -> str:
 
 # ── Prompt Oluşturucu ─────────────────────────────────────────────────────────
 
+def _implied_probs(ms1: float, x: float, ms2: float) -> tuple[int, int, int] | None:
+    """Bahis oranlarından vig-free zımni olasılık hesapla (toplam %100)."""
+    try:
+        raw = [1 / ms1, 1 / x, 1 / ms2]
+        total = sum(raw)
+        return tuple(round(p / total * 100) for p in raw)
+    except Exception:
+        return None
+
+
 def _build_prompt(
     home_team: str, away_team: str,
     home_last5: list[dict], away_last5: list[dict],
@@ -160,6 +170,7 @@ def _build_prompt(
     missing_players: list[dict],
     third_party_pred: dict | None = None,
     is_neutral_venue: bool = False,
+    market_odds: dict | None = None,
 ) -> str:
     home_id = _find_team_id(home_team, home_last5)
     away_id = _find_team_id(away_team, away_last5)
@@ -202,7 +213,37 @@ def _build_prompt(
         f"MS1 %{p_ms1} | X %{p_x} | MS2 %{p_ms2} | 2.5 Üst %{poisson_o25}"
     )
 
-    # Üçüncü taraf tahmin bloğu (varsa)
+    # Piyasa konsensüsü bloğu — İddaa/Misli/Nesine ortalama oranlar
+    market_block = ""
+    if market_odds:
+        probs = _implied_probs(
+            market_odds.get("ms1", 0),
+            market_odds.get("x",   0),
+            market_odds.get("ms2", 0),
+        )
+        if probs:
+            sources_str = ", ".join(market_odds.get("sources", ["bahis"]))
+            market_block = (
+                f"\n## Piyasa Konsensüsü ({sources_str} — zımni olasılık)\n"
+                f"MS1 %{probs[0]} | X %{probs[1]} | MS2 %{probs[2]}\n"
+                f"Oranlar: {home_team} {market_odds.get('ms1','?')} "
+                f"| X {market_odds.get('x','?')} "
+                f"| {away_team} {market_odds.get('ms2','?')}\n"
+            )
+            o25 = market_odds.get("over25")
+            u25 = market_odds.get("under25")
+            if o25 and u25:
+                try:
+                    p_o = round(1 / o25 / (1 / o25 + 1 / u25) * 100)
+                    market_block += f"2.5 Üst %{p_o} | 2.5 Alt %{100 - p_o} (oran {o25} / {u25})\n"
+                except Exception:
+                    pass
+            kv = market_odds.get("kg_var")
+            if kv and kv > 1:
+                p_kv = round(100 / kv)
+                market_block += f"KG Var %{p_kv} (oran {kv})\n"
+
+    # Üçüncü taraf tahmin bloğu — api-football motoru
     third_party_block = ""
     if third_party_pred:
         pct  = third_party_pred.get("percent", {})
@@ -246,7 +287,7 @@ Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']}
 Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}
 Kartlar: {a_card_str}
 
-{btts_block}{third_party_block}
+{btts_block}{market_block}{third_party_block}
 
 ## Kadro Durumu
 Form skoru: {home_team} %{round(home_form*100)} — {away_team} %{round(away_form*100)}
@@ -257,7 +298,8 @@ Sakatlık etkisi: {home_team} %{round(home_injury*100)} — {away_team} %{round(
 - {home_team}'in son form ve gol istatistiklerini gerçek rakamlarla belirt.
 - {away_team}'in son form ve gol istatistiklerini gerçek rakamlarla belirt.
 - KG Var / 2.5 Üst eğilimi güçlüyse bunu vurgula.
-- Üçüncü taraf tahmin verileri varsa bunları kendi analizinle karşılaştır; varsa anlaşmazlığı belirt.
+- Piyasa konsensüsü varsa: kendi Poisson modelinle karşılaştır; eğer piyasa ve model aynı yönü gösteriyorsa "piyasa da [tahmin]'i destekliyor" de, farklıysa nedenini açıkla.
+- Üçüncü taraf (api-football) tahmini varsa bunu da değerlendir; 3 kaynak da aynı yönü gösteriyorsa güven skorunu yüksek tut.
 - Sarı/kırmızı kart baskısı önemliyse belirt.
 - Sakat veya cezalı oyuncu varsa bir cümleyle belirt (adlarını yaz).
 - Rakamları olduğu gibi kullan; farklı sayı yazma.
@@ -362,6 +404,7 @@ def analyze_with_claude(
     missing_players: list[dict],
     third_party_pred: dict | None = None,
     league_ref: str | int = "",
+    market_odds: dict | None = None,
 ) -> dict:
     """
     Claude ile maç analizi yapar.
@@ -408,6 +451,7 @@ def analyze_with_claude(
             missing_players,
             third_party_pred=third_party_pred,
             is_neutral_venue=is_neutral,
+            market_odds=market_odds,
         )
 
         message = client.messages.create(

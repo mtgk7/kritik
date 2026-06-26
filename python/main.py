@@ -236,9 +236,47 @@ _FD_TO_AFL: dict[str, int] = {
 }
 
 
+def _fetch_market_odds() -> dict:
+    """
+    İddaa, Misli, Nesine oranlarını çekip takım bazında birleştirir.
+    Her alandaki değer 3 kaynağın ortalamasıdır.
+    """
+    from odds_scraper import scrape_iddaa, scrape_misli, scrape_nesine, norm as _onorm
+
+    by_match: dict[str, dict[str, dict]] = {}
+
+    for src_name, fn in [("iddaa", scrape_iddaa), ("misli", scrape_misli), ("nesine", scrape_nesine)]:
+        try:
+            for odds in fn():
+                key = f"{_onorm(odds['home'])}|{_onorm(odds['away'])}"
+                by_match.setdefault(key, {})[src_name] = odds
+        except Exception as e:
+            log.warning(f"Odds {src_name}: {e}")
+
+    result: dict[str, dict] = {}
+    for key, srcs in by_match.items():
+        fields = ["ms1", "x", "ms2", "over25", "under25", "kg_var", "kg_yok"]
+        avg: dict = {"sources": list(srcs.keys())}
+        for f in fields:
+            vals = [s[f] for s in srcs.values() if s.get(f)]
+            if vals:
+                avg[f] = round(sum(vals) / len(vals), 2)
+        result[key] = avg
+
+    log.info(f"Piyasa oranları: {len(result)} maç indexlendi ({', '.join(set(s for m in by_match.values() for s in m))})")
+    return result
+
+
 def run():
     log.info("=== Kritik Data Bot başlatıldı ===")
     analyzed_all = []
+
+    # Bahis oranlarını başta çek (3 Türk bookmaker)
+    try:
+        market_odds_index = _fetch_market_odds()
+    except Exception as e:
+        log.warning(f"Piyasa oranları yüklenemedi: {e}")
+        market_odds_index = {}
 
     # Provider'a göre lig listesi seç
     leagues = FOOTBALL_DATA_LEAGUES if PROVIDER == "football_data" else [str(i) for i in LEAGUE_IDS]
@@ -323,6 +361,14 @@ def run():
                     except Exception as _e:
                         log.debug(f"    3. taraf tahmin alınamadı: {_e}")
 
+                # Piyasa oranı araması — normalize takım adıyla
+                from odds_scraper import norm as _onorm
+                _odds_key = f"{_onorm(home_name)}|{_onorm(away_name)}"
+                match_market_odds = market_odds_index.get(_odds_key)
+                if match_market_odds:
+                    srcs = ", ".join(match_market_odds.get("sources", []))
+                    log.info(f"    Piyasa oranı bulundu ({srcs}): MS1={match_market_odds.get('ms1')} X={match_market_odds.get('x')} MS2={match_market_odds.get('ms2')}")
+
                 # Claude AI analizi (API key yoksa kural tabanlı)
                 ai_result = analyze_with_claude(
                     home_name, away_name,
@@ -334,6 +380,7 @@ def run():
                     home_missing + away_missing,
                     third_party_pred=third_party_pred,
                     league_ref=league_ref,
+                    market_odds=match_market_odds,
                 )
 
                 all_missing = [
