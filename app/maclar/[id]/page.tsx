@@ -101,7 +101,16 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
     allPreds.push({ prediction: m.prediction, confidence: m.prediction_confidence })
   }
   ;(m.alternatives ?? []).forEach(a => allPreds.push(a))
-  const totalConf = allPreds.reduce((s, a) => s + a.confidence, 0)
+
+  // Piyasa etiketi — farklı marketleri ayırt etmek için
+  function getPredMarket(p: string): string {
+    const u = p.toUpperCase()
+    if (['MS1','X','MS2'].includes(u)) return '1x2'
+    if (['1X','X2','12'].includes(u)) return 'Çifte Şans'
+    if (u.includes('ÜST') || u.includes('ALT')) return 'Gol'
+    if (u.includes('KG')) return 'KG'
+    return ''
+  }
 
   // Blurlu bölüm için — gerçek veri asla kilitli kullanıcıya gönderilmez
   const displayPreds = unlocked
@@ -243,21 +252,35 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* Tüm seçenekler bar olarak */}
+          {/* Tüm seçenekler bar olarak — bağımsız piyasalar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
             {displayPreds.map((pred, i) => {
-              const pct = totalConf > 0 ? (pred.confidence / totalConf) * 100 : pred.confidence
               const isMain = i === 0
+              const barPct = Math.min(pred.confidence, 100)
+              const market = getPredMarket(pred.prediction)
+              const barColor = isMain
+                ? 'var(--color-accent)'
+                : market === 'Gol' ? 'var(--color-warning)'
+                : market === 'Çifte Şans' ? 'var(--color-success)'
+                : market === 'KG' ? 'oklch(55% 0.16 145)'
+                : 'var(--color-border-strong)'
               return (
                 <div key={i}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                    <span style={{
-                      fontSize: '0.82rem', fontWeight: isMain ? 700 : 500,
-                      color: unlocked ? (isMain ? 'var(--color-text-primary)' : 'var(--color-text-secondary)') : 'var(--color-border)',
-                      textTransform: 'uppercase', letterSpacing: '0.04em',
-                    }}>
-                      {pred.prediction}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{
+                        fontSize: '0.82rem', fontWeight: isMain ? 700 : 500,
+                        color: unlocked ? (isMain ? 'var(--color-text-primary)' : 'var(--color-text-secondary)') : 'var(--color-border)',
+                        textTransform: 'uppercase', letterSpacing: '0.04em',
+                      }}>
+                        {pred.prediction}
+                      </span>
+                      {unlocked && market && !isMain && (
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: barColor, opacity: 0.8 }}>
+                          {market}
+                        </span>
+                      )}
+                    </div>
                     <span style={{ fontSize: '0.82rem', fontWeight: 700, color: unlocked ? (isMain ? 'var(--color-accent)' : 'var(--color-text-tertiary)') : 'var(--color-border)' }}>
                       %{pred.confidence}
                     </span>
@@ -265,8 +288,8 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
                   <div style={{ height: isMain ? '8px' : '5px', borderRadius: '99px', background: 'var(--color-border)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: '99px',
-                      background: unlocked ? (isMain ? 'var(--color-accent)' : 'var(--color-border-strong)') : 'var(--color-border)',
-                      width: `${pct}%`,
+                      background: unlocked ? barColor : 'var(--color-border)',
+                      width: `${barPct}%`,
                       transition: 'width 0.4s cubic-bezier(0.16,1,0.3,1)',
                     }} />
                   </div>

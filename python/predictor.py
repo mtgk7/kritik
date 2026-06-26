@@ -310,16 +310,22 @@ Analizin sonuna TAM OLARAK şu formatı ekle:
 ANA: [tahmin] %[güven]
 ALT1: [tahmin] %[güven]
 ALT2: [tahmin] %[güven]
+ALT3: [tahmin] %[güven]
 ---SON---
 
-Tahmin seçenekleri: MS1, MS2, X, 2.5 Üst, 2.5 Alt, KG Var, KG Yok
-Güven yüzdeleri toplamı 100 olmalı.
+Tahmin seçenekleri (farklı piyasalar — birbirinden bağımsız):
+• 1x2 piyasası: MS1, X, MS2
+• Çifte şans: 1X (ev sahibi kaybetmez), X2 (deplasman kaybetmez), 12 (beraberlik yok)
+• Gol piyasası: 2.5 Üst, 2.5 Alt, KG Var, KG Yok
 
-Gol tahmini rehberi:
-- Poisson 2.5 Üst %62+ VE her iki takım da son maçlarda gol attıysa → ANA: KG Var veya 2.5 Üst
-- Toplam xG <1.8 ve Poisson 2.5 Üst <%35 → ANA: 2.5 Alt
-- Her iki takım da maç başı >1.2 gol ortalamasına sahipse ve kazanan belirsizse → ANA: KG Var
-- 1x2 tahmini belirliyse ama gol sinyali güçlüyse → ALT olarak gol tahmini ekle"""
+Her tahmin kendi marketi için 0-100 arasında bağımsız güven verir.
+ANA her zaman en belirleyici tahmin. ALT'lar farklı piyasalardan olabilir.
+
+Çoklu piyasa kuralları:
+- MS1 güçlüyse (>%60) → ANA: MS1, ALT1: 1X (yüksek güven), ALT2: gol piyasası
+- KG Var güçlüyse → ALT olarak ekle (MS1 ile aynı anda doğru olabilir)
+- 2.5 Üst Poisson %62+ → ALT olarak ekle
+- Deplasman zayıfsa → ALT: 1X (%80+ güven olabilir)"""
 
     return prompt
 
@@ -546,20 +552,23 @@ def _parse_predictions(
     return {
         "prediction":            predictions[0]["prediction"],
         "prediction_confidence": predictions[0]["confidence"],
-        "alternatives":          predictions[1:3],
+        "alternatives":          predictions[1:5],   # en fazla 4 alternatif
         "analysis":              analysis,
     }
 
 
 def _normalize_pred(code: str) -> str:
     c = code.lower().strip()
-    if "ms1" in c or "ev sahi" in c:                    return "MS1"
-    if "ms2" in c or "deplasm" in c:                    return "MS2"
-    if c == "x" or "beraberlik" in c:                   return "X"
-    if "üst" in c or "ust" in c:                        return "2.5 Üst"
-    if "alt" in c:                                       return "2.5 Alt"
-    if "kg var" in c or "btts" in c or "karşıl" in c: return "KG Var"
-    if "kg yok" in c or "clean" in c:                   return "KG Yok"
+    if c in ("1x",) or ("1x" in c and "çifte" not in c):   return "1X"
+    if c in ("x2",):                                          return "X2"
+    if c in ("12",):                                          return "12"
+    if "ms1" in c or "ev sahi" in c:                         return "MS1"
+    if "ms2" in c or "deplasm" in c:                         return "MS2"
+    if c == "x" or "beraberlik" in c:                        return "X"
+    if "üst" in c or "ust" in c:                             return "2.5 Üst"
+    if "alt" in c:                                            return "2.5 Alt"
+    if "kg var" in c or "btts" in c or "karşıl" in c:      return "KG Var"
+    if "kg yok" in c or "clean" in c:                        return "KG Yok"
     return code.upper()
 
 
@@ -693,8 +702,38 @@ def _rule_based(
                     {"prediction": "MS1", "confidence": max(int(12 - strength), 5)},
                 ]
 
-    total_alt = sum(a["confidence"] for a in alts[:2])
-    c1 = max(100 - total_alt, 40)
+    # ── Çifte şans (double chance) ───────────────────────────────────────────
+    p_1x = p_ms1 + p_x   # ev sahibi kaybetmez
+    p_x2 = p_x + p_ms2   # deplasman kaybetmez
+    p_12 = p_ms1 + p_ms2 # birileri kazanır
+
+    # Ana tahmin 1x2 ise çifte şansı alt olarak ekle (daha yüksek güvende)
+    existing_preds = {main} | {a["prediction"] for a in alts}
+    if main in ("MS1", "X") and p_1x >= 70 and "1X" not in existing_preds:
+        alts.append({"prediction": "1X", "confidence": p_1x})
+    if main in ("MS2", "X") and p_x2 >= 70 and "X2" not in existing_preds:
+        alts.append({"prediction": "X2", "confidence": p_x2})
+
+    # ── Gol piyasası — ana tahmin değilse ekle ───────────────────────────────
+    existing_preds = {main} | {a["prediction"] for a in alts}
+    if over25_signal and "2.5 Üst" not in existing_preds:
+        alts.append({"prediction": "2.5 Üst", "confidence": min(poisson_o25, 72)})
+    if under25_signal and "2.5 Alt" not in existing_preds:
+        alts.append({"prediction": "2.5 Alt", "confidence": min(100 - poisson_o25, 68)})
+    if btts_signal and "KG Var" not in existing_preds:
+        btts_conf = min(int(home_adj * away_adj * 18), 68)
+        if btts_conf >= 55:
+            alts.append({"prediction": "KG Var", "confidence": btts_conf})
+
+    # Sadece ≥55% güvenli alternatifleri tut, güvene göre sırala
+    alts = sorted(
+        [a for a in alts if a["confidence"] >= 55],
+        key=lambda a: a["confidence"],
+        reverse=True,
+    )
+
+    # Ana tahminin güven skoru: birincil 1x2 tahmininin iç değeri
+    c1 = max(100 - sum(a["confidence"] for a in alts[:2] if a["prediction"] in ("MS1","MS2","X","1X","X2","12")), 40)
 
     analysis = _stat_analysis(
         home_team, away_team,
@@ -708,6 +747,6 @@ def _rule_based(
     return {
         "prediction":            main,
         "prediction_confidence": c1,
-        "alternatives":          alts[:2],
+        "alternatives":          alts[:4],   # en fazla 4 alternatif
         "analysis":              analysis,
     }
