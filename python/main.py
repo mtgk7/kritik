@@ -363,6 +363,16 @@ def run():
                     except Exception as _e:
                         log.debug(f"    3. taraf tahmin alınamadı: {_e}")
 
+                # Web form analizi — SofaScore'dan son 5 maç (API key gerekmez)
+                home_web_form = None
+                away_web_form = None
+                try:
+                    from providers.team_form_web import get_team_form_profile
+                    home_web_form = get_team_form_profile(home_name)
+                    away_web_form = get_team_form_profile(away_name)
+                except Exception as _wfe:
+                    log.debug(f"    Web form çekilemedi: {_wfe}")
+
                 # Piyasa oranı araması — normalize takım adıyla
                 from odds_scraper import norm as _onorm
                 _odds_key = f"{_onorm(home_name)}|{_onorm(away_name)}"
@@ -383,6 +393,8 @@ def run():
                     third_party_pred=third_party_pred,
                     league_ref=league_ref,
                     market_odds=match_market_odds,
+                    home_web_form=home_web_form,
+                    away_web_form=away_web_form,
                 )
 
                 all_missing = [

@@ -171,6 +171,8 @@ def _build_prompt(
     third_party_pred: dict | None = None,
     is_neutral_venue: bool = False,
     market_odds: dict | None = None,
+    home_web_form: dict | None = None,
+    away_web_form: dict | None = None,
 ) -> str:
     home_id = _find_team_id(home_team, home_last5)
     away_id = _find_team_id(away_team, away_last5)
@@ -269,6 +271,30 @@ def _build_prompt(
             f"{h2h_line}"
         )
 
+    # Web form bloğu (SofaScore'dan çekilmiş gerçek zamanlı veri)
+    web_form_block = ""
+    def _fmt_web(label: str, wf: dict) -> str:
+        res_str = " ".join(wf.get("results", []))
+        cs = wf.get("clean_sheets", 0)
+        fts = wf.get("failed_to_score", 0)
+        extras = []
+        if cs > 0: extras.append(f"{cs} kuru kale")
+        if fts > 0: extras.append(f"{fts} golsüz maç")
+        extra_str = f" ({', '.join(extras)})" if extras else ""
+        return (
+            f"{label}: {wf['goals_for']} gol attı / {wf['goals_against']} gol yedi "
+            f"({wf['avg_gf']}/maç — {wf['avg_ga']}/maç yenilen){extra_str}\n"
+            f"  Sonuçlar: {res_str} | Stil: {wf.get('style','?')}"
+        )
+
+    if home_web_form or away_web_form:
+        lines = ["\n## Web Form Analizi (SofaScore — Son 5 Maç)"]
+        if home_web_form:
+            lines.append(_fmt_web(home_team, home_web_form))
+        if away_web_form:
+            lines.append(_fmt_web(away_team, away_web_form))
+        web_form_block = "\n".join(lines)
+
     neutral_note = "\nÖNEMLİ: Bu maç TARAFSIZ SAHADA oynanıyor. Ev sahibi avantajı yoktur; her iki takım eşit koşullarda. Tahmininde ev sahibi avantajını hesaba KATMA.\n" if is_neutral_venue else ""
 
     prompt = f"""Sen bir futbol analiz uzmanısın. Aşağıdaki gerçek istatistikleri kullanarak {home_team} - {away_team} maçı için Türkçe analiz yaz.
@@ -287,7 +313,7 @@ Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']}
 Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}
 Kartlar: {a_card_str}
 
-{btts_block}{market_block}{third_party_block}
+{btts_block}{market_block}{third_party_block}{web_form_block}
 
 ## Kadro Durumu
 Form skoru: {home_team} %{round(home_form*100)} — {away_team} %{round(away_form*100)}
@@ -411,6 +437,8 @@ def analyze_with_claude(
     third_party_pred: dict | None = None,
     league_ref: str | int = "",
     market_odds: dict | None = None,
+    home_web_form: dict | None = None,
+    away_web_form: dict | None = None,
 ) -> dict:
     """
     Claude ile maç analizi yapar.
@@ -458,6 +486,8 @@ def analyze_with_claude(
             third_party_pred=third_party_pred,
             is_neutral_venue=is_neutral,
             market_odds=market_odds,
+            home_web_form=home_web_form,
+            away_web_form=away_web_form,
         )
 
         message = client.messages.create(
