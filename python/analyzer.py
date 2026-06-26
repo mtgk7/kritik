@@ -15,6 +15,7 @@ from api_client import get_last5_fixtures, get_team_goals_avg, get_injuries
 from config import (
     W_FORM, W_XG, W_HOME, W_INJURY,
     POSITION_IMPACT, DEFAULT_POSITION_IMPACT,
+    NEUTRAL_VENUE_LEAGUES,
     missed_multiplier,
 )
 
@@ -22,24 +23,34 @@ from config import (
 # ── Form Skoru ─────────────────────────────────────────────────────────────────
 
 def calc_form_score(team_id: int, league_ref: str | int = "", season: int | None = None) -> float:
-    """Son 5 maç: G=3, B=1, M=0 → normalize 0-1."""
+    """
+    Son 5 maç: G=3, B=1, M=0 → normalize 0-1.
+    Son 2 maça 2× ağırlık verilir (güncel form daha önemli).
+    """
     fixtures = get_last5_fixtures(team_id, league_ref, season)
     if not fixtures:
         return 0.5
 
-    points, played = 0, 0
-    for fx in fixtures:
-        home   = fx["teams"]["home"]
-        winner = home.get("winner")
+    weighted_points = 0.0
+    weighted_max    = 0.0
+
+    for i, fx in enumerate(fixtures):
+        weight  = 2.0 if i < 2 else 1.0   # en yeni 2 maç daha ağırlıklı
+        home    = fx["teams"]["home"]
+        winner  = home.get("winner")
         is_home = home.get("id") == team_id
 
         if winner is None:
-            points += 1
+            pts = 1
         elif (winner and is_home) or (not winner and not is_home):
-            points += 3
-        played += 1
+            pts = 3
+        else:
+            pts = 0
 
-    return (points / (played * 3)) if played > 0 else 0.5
+        weighted_points += pts * weight
+        weighted_max    += 3  * weight
+
+    return (weighted_points / weighted_max) if weighted_max > 0 else 0.5
 
 
 # ── xG Skoru ──────────────────────────────────────────────────────────────────
@@ -110,12 +121,20 @@ def calc_confidence(
     home_form: float, away_form: float,
     home_xg: float,   away_xg: float,
     home_injury: float, away_injury: float,
+    league_ref: str | int = "",
 ) -> float:
-    """0-1 arası güven skoru. Spesifikasyon formülü: sigmoid(|net| × 4)."""
+    """0-1 arası güven skoru. Tarafsız sahada ev sahibi avantajı uygulanmaz."""
+    try:
+        is_neutral = int(league_ref) in NEUTRAL_VENUE_LEAGUES
+    except (ValueError, TypeError):
+        is_neutral = str(league_ref).upper() in {"WC"}
+
+    home_advantage = 0.0 if is_neutral else 0.5
+
     net = (
-        (home_form  - away_form)   * W_FORM
-        + (home_xg  - away_xg)    * W_XG
-        + 0.5                      * W_HOME
+        (home_form  - away_form)      * W_FORM
+        + (home_xg  - away_xg)       * W_XG
+        + home_advantage              * W_HOME
         - (home_injury - away_injury) * W_INJURY
     )
     return round(_sigmoid(abs(net) * 4.0), 3)

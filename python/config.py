@@ -39,8 +39,15 @@ FIXTURE_DAYS_AHEAD = int(os.getenv("FIXTURE_DAYS_AHEAD", "3"))
 # Algoritma ağırlıkları
 W_FORM    = 0.35   # form skoru farkı
 W_XG      = 0.40   # xG farkı
-W_HOME    = 0.10   # ev sahibi avantajı
+W_HOME    = 0.10   # ev sahibi avantajı (tarafsız saha maçlarında 0 kullanılır)
 W_INJURY  = 0.15   # sakatlık etkisi (negatif)
+
+# Tarafsız saha ligi ID'leri (WC, EURO vb.) — ev sahibi avantajı uygulanmaz
+NEUTRAL_VENUE_LEAGUES: set[int] = {1, 4, 6, 9, 960}  # WC 2026, WC Qual, UEFA NL, Nations, Friendlies
+
+# Tahmin eşikleri
+DRAW_THRESHOLD  = 0.14   # |net| < DRAW_THRESHOLD → X tahmini düşünülür
+MS2_MIN_NET     = 0.13   # deplasman galibiyeti için minimum net fark (daha güçlü sinyal gerekir)
 
 # Pozisyon bazlı oyuncu etki yüzdesi (takım gücüne katkı)
 POSITION_IMPACT: dict[str, float] = {

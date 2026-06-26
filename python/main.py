@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import schedule
 
-from config import PROVIDER, FOOTBALL_DATA_LEAGUES, LEAGUE_IDS, API_KEY
+from config import PROVIDER, FOOTBALL_DATA_LEAGUES, LEAGUE_IDS, API_KEY, DRAW_THRESHOLD, MS2_MIN_NET, NEUTRAL_VENUE_LEAGUES
 from api_client import get_fixtures, current_league_season, get_last5_summary
 from analyzer import (
     calc_form_score,
@@ -57,22 +57,32 @@ def predict(
     home_form: float, away_form: float,
     home_xg: float,   away_xg: float,
     home_injury: float, away_injury: float,
+    league_ref: str | int = "",
 ) -> str:
     """
-    Basit kural tabanlı tahmin — her zaman bir string döndürür (kritik5.py: zorunlu str).
-    Net avantaj > 0 → MS1, < 0 → MS2, yakın → xG toplamına göre 2.5 Üst/Alt
+    Basit kural tabanlı tahmin. Tarafsız saha desteği ve gelişmiş beraberlik/MS2 eşikleri.
     """
-    form_diff = (home_form - away_form) * 0.35
-    xg_diff   = (home_xg   - away_xg)   * 0.40
-    net       = form_diff + xg_diff + 0.05
+    try:
+        is_neutral = int(league_ref) in NEUTRAL_VENUE_LEAGUES
+    except (ValueError, TypeError):
+        is_neutral = str(league_ref).upper() in {"WC"}
+
+    home_bonus = 0.0 if is_neutral else 0.05
+    form_diff  = (home_form - away_form) * 0.35
+    xg_diff    = (home_xg   - away_xg)   * 0.40
+    net        = form_diff + xg_diff + home_bonus
 
     home_adj = home_xg * (1 - home_injury)
     away_adj = away_xg * (1 - away_injury)
     total_xg = home_adj + away_adj
 
-    if abs(net) < 0.08:
-        return "2.5 Üst" if total_xg > 2.5 else "2.5 Alt"
-    return "MS1" if net > 0 else "MS2"
+    if abs(net) < DRAW_THRESHOLD:
+        return "2.5 Üst" if total_xg > 2.6 else ("2.5 Alt" if total_xg < 1.8 else "X")
+    if net > 0:
+        return "MS1"
+    if abs(net) < MS2_MIN_NET:
+        return "X"
+    return "MS2"
 
 
 # ── Kupon üretici ─────────────────────────────────────────────────────────────
@@ -271,11 +281,12 @@ def run():
                 # Toplam sakatlık etkisi (ortalama)
                 critical_missing_effect = round((home_inj + away_inj) / 2, 3)
 
-                # Güven skoru
+                # Güven skoru (tarafsız saha ligleri için ev avantajı sıfır)
                 confidence = calc_confidence(
                     home_form, away_form,
                     home_xg_norm, away_xg_norm,
                     home_inj, away_inj,
+                    league_ref=league_ref,
                 )
 
                 # Son 5 maç özet verisi — SofaScore veya mevcut provider
@@ -322,6 +333,7 @@ def run():
                     home_inj, away_inj,
                     home_missing + away_missing,
                     third_party_pred=third_party_pred,
+                    league_ref=league_ref,
                 )
 
                 all_missing = [

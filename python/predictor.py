@@ -10,6 +10,7 @@ ANTHROPIC_API_KEY ayarlanmamışsa kural+istatistik tabanlı metne döner.
 import os
 import math
 import logging
+from config import NEUTRAL_VENUE_LEAGUES, DRAW_THRESHOLD, MS2_MIN_NET
 
 log = logging.getLogger("kritik-bot.predictor")
 
@@ -158,6 +159,7 @@ def _build_prompt(
     home_injury: float, away_injury: float,
     missing_players: list[dict],
     third_party_pred: dict | None = None,
+    is_neutral_venue: bool = False,
 ) -> str:
     home_id = _find_team_id(home_team, home_last5)
     away_id = _find_team_id(away_team, away_last5)
@@ -226,9 +228,11 @@ def _build_prompt(
             f"{h2h_line}"
         )
 
+    neutral_note = "\nÖNEMLİ: Bu maç TARAFSIZ SAHADA oynanıyor. Ev sahibi avantajı yoktur; her iki takım eşit koşullarda. Tahmininde ev sahibi avantajını hesaba KATMA.\n" if is_neutral_venue else ""
+
     prompt = f"""Sen bir futbol analiz uzmanısın. Aşağıdaki gerçek istatistikleri kullanarak {home_team} - {away_team} maçı için Türkçe analiz yaz.
 
-KURAL: Sadece verilen sayıları kullan. Hiçbir istatistiği uydurma.
+KURAL: Sadece verilen sayıları kullan. Hiçbir istatistiği uydurma.{neutral_note}
 
 ## {home_team} Son {hs['played']} Maç
 {home_5}
@@ -351,6 +355,7 @@ def analyze_with_claude(
     home_injury: float, away_injury: float,
     missing_players: list[dict],
     third_party_pred: dict | None = None,
+    league_ref: str | int = "",
 ) -> dict:
     """
     Claude ile maç analizi yapar.
@@ -361,6 +366,11 @@ def analyze_with_claude(
     away_id    = _find_team_id(away_team, away_last5)
     home_stats = _calc_team_stats(home_id, home_last5)
     away_stats = _calc_team_stats(away_id, away_last5)
+
+    try:
+        is_neutral = int(league_ref) in NEUTRAL_VENUE_LEAGUES
+    except (ValueError, TypeError):
+        is_neutral = str(league_ref).upper() in {"WC"}
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
 
@@ -374,6 +384,7 @@ def analyze_with_claude(
             home_xg, away_xg,
             home_injury, away_injury,
             missing_players,
+            league_ref=league_ref,
         )
 
     try:
@@ -390,6 +401,7 @@ def analyze_with_claude(
             home_injury, away_injury,
             missing_players,
             third_party_pred=third_party_pred,
+            is_neutral_venue=is_neutral,
         )
 
         message = client.messages.create(
@@ -424,6 +436,7 @@ def analyze_with_claude(
             home_xg, away_xg,
             home_injury, away_injury,
             missing_players,
+            league_ref=league_ref,
         )
 
 
@@ -510,40 +523,84 @@ def _rule_based(
     home_xg: float, away_xg: float,
     home_injury: float, away_injury: float,
     missing_players: list[dict],
+    league_ref: str | int = "",
 ) -> dict:
+    # Tarafsız saha tespiti — WC gibi liglerde ev sahibi avantajı sıfır
+    try:
+        is_neutral = int(league_ref) in NEUTRAL_VENUE_LEAGUES
+    except (ValueError, TypeError):
+        is_neutral = str(league_ref).upper() in {"WC"}
+
+    home_bonus = 0.0 if is_neutral else 0.05
+
     form_diff = (home_form - away_form) * 0.35
     xg_diff   = (home_xg   - away_xg)   * 0.40
-    net       = form_diff + xg_diff + 0.05
+    net       = form_diff + xg_diff + home_bonus
 
     home_adj    = home_xg * (1 - home_injury)
     away_adj    = away_xg * (1 - away_injury)
     total_xg    = home_adj + away_adj
     poisson_o25 = _poisson_over25(home_xg, away_xg)
+    p_ms1, p_x, p_ms2 = _poisson_1x2(home_xg, away_xg)
 
-    if abs(net) < 0.08:
-        main, c1 = ("2.5 Üst", 55) if total_xg > 2.5 else ("2.5 Alt", 55)
-        alts = [{"prediction": "X", "confidence": 25}, {"prediction": "MS1", "confidence": 20}]
+    # Beraberlik sinyali: net fark küçük VEYA Poisson X yüksekse
+    draw_signal = abs(net) < DRAW_THRESHOLD or p_x >= 28
+
+    if draw_signal:
+        # Beraberlik bölgesi: X veya gol tahmini
+        if total_xg > 2.6:
+            # Gol beklentisi yüksek → 2.5 Üst + alternatif X
+            main = "2.5 Üst"
+            alts = [
+                {"prediction": "X",   "confidence": max(p_x, 22)},
+                {"prediction": "MS1", "confidence": max(p_ms1 - 5, 12)},
+            ]
+        elif total_xg < 1.8:
+            # Az gol beklentisi → 2.5 Alt
+            main = "2.5 Alt"
+            alts = [
+                {"prediction": "X",   "confidence": max(p_x, 25)},
+                {"prediction": "MS1", "confidence": max(p_ms1 - 5, 10)},
+            ]
+        else:
+            # Belirsiz → X tahmini
+            main = "X"
+            alts = [
+                {"prediction": "MS1",   "confidence": max(p_ms1 - 5, 18)},
+                {"prediction": "2.5 Üst", "confidence": min(poisson_o25, 20)},
+            ]
     elif net > 0:
-        c1   = min(70, 50 + int(abs(net) * 100))
+        # MS1 bölgesi — güçlü ev/form avantajı
+        strength = min(abs(net) * 100, 30)
         main = "MS1"
         alts = [
-            {"prediction": "X",   "confidence": max(10, 30 - int(abs(net)*50))},
-            {"prediction": "MS2", "confidence": max(5,  20 - int(abs(net)*50))},
+            {"prediction": "X",   "confidence": max(int(30 - strength), 12)},
+            {"prediction": "MS2", "confidence": max(int(15 - strength), 5)},
         ]
     else:
-        c1   = min(70, 50 + int(abs(net) * 100))
-        main = "MS2"
-        alts = [
-            {"prediction": "X",   "confidence": max(10, 30 - int(abs(net)*50))},
-            {"prediction": "MS1", "confidence": max(5,  20 - int(abs(net)*50))},
-        ]
+        # MS2 bölgesi — daha güçlü sinyal gerekir
+        # MS2_MIN_NET eşiğini geçmeden X'e düşür
+        if abs(net) < MS2_MIN_NET:
+            main = "X"
+            alts = [
+                {"prediction": "MS2",     "confidence": max(p_ms2 - 5, 15)},
+                {"prediction": "2.5 Üst", "confidence": min(poisson_o25, 18)},
+            ]
+        else:
+            strength = min(abs(net) * 100, 25)
+            main = "MS2"
+            alts = [
+                {"prediction": "X",   "confidence": max(int(28 - strength), 12)},
+                {"prediction": "MS1", "confidence": max(int(12 - strength), 5)},
+            ]
 
-    # KG Var alternatif — Poisson 2.5 Üst yüksekse ekle
-    if poisson_o25 >= 60 and "KG Var" not in [a["prediction"] for a in alts]:
-        alts.append({"prediction": "KG Var", "confidence": min(poisson_o25 - 10, 35)})
+    # KG Var alternatif — Poisson 2.5 Üst yüksekse ve alternatifler arasında yoksa
+    alt_preds = [a["prediction"] for a in alts]
+    if poisson_o25 >= 62 and "KG Var" not in alt_preds and "2.5 Üst" not in alt_preds:
+        alts.append({"prediction": "KG Var", "confidence": min(poisson_o25 - 12, 28)})
 
-    total_alt = sum(a["confidence"] for a in alts)
-    c1 = 100 - total_alt
+    total_alt = sum(a["confidence"] for a in alts[:2])
+    c1 = max(100 - total_alt, 40)
 
     analysis = _stat_analysis(
         home_team, away_team,
@@ -557,6 +614,6 @@ def _rule_based(
     return {
         "prediction":            main,
         "prediction_confidence": c1,
-        "alternatives":          alts,
+        "alternatives":          alts[:2],
         "analysis":              analysis,
     }
