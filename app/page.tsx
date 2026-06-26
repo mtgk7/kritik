@@ -6,6 +6,9 @@ import NewsSidebar from '@/components/NewsSidebar'
 import AdSlot from '@/components/AdSlot'
 import MatchListClient from '@/components/MatchListClient'
 import { translateTeam } from '@/lib/team-names'
+import { LEAGUES } from '@/lib/leagues'
+
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -70,7 +73,22 @@ export default async function HomePage() {
           : { ...m, prediction: m.prediction ? '__locked__' : null, prediction_confidence: null },
       )
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Kritik',
+    url: SITE,
+    description: 'Yapay zeka destekli futbol maç tahminleri. Süper Lig, Premier Lig, Şampiyonlar Ligi ve daha fazlası için xG, form ve güven skoru analizleri.',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: { '@type': 'EntryPoint', urlTemplate: `${SITE}/?q={search_term_string}` },
+      'query-input': 'required name=search_term_string',
+    },
+  }
+
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <main style={{ padding: 'var(--page-pad)', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
       <div className={latestNews.length > 0 ? 'home-grid' : undefined}>
 
@@ -116,7 +134,24 @@ export default async function HomePage() {
           </div>
         )}
       </div>
+
+      {/* SEO footer — lig linkleri */}
+      <nav aria-label="Lig tahminleri" style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--color-border)' }}>
+        <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem', fontFamily: 'var(--font-display)' }}>
+          Lig Tahminleri
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem' }}>
+          {LEAGUES.map(l => (
+            <a key={l.slug} href={`/lig/${l.slug}`} style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textDecoration: 'none', fontWeight: 600 }}>
+              {l.name} Tahminleri
+            </a>
+          ))}
+          <a href="/tahminler/bugun" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Bugünkü Tahminler</a>
+          <a href="/tahminler/yarin" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Yarınki Tahminler</a>
+        </div>
+      </nav>
     </main>
+    </>
   )
 }
 

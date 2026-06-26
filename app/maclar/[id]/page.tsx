@@ -153,19 +153,32 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
     ? translateText(m.analysis).split(/\.\s+/).filter(s => s.trim().length > 10).map(s => s.trim().endsWith('.') ? s.trim() : s.trim() + '.')
     : []
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'SportsEvent',
-    name: `${m.home_team} vs ${m.away_team}`,
-    startDate: m.match_time,
-    url: `${siteUrl}/maclar/${m.id}`,
-    location: { '@type': 'Place', name: m.league_name ?? 'Futbol' },
-    competitor: [
-      { '@type': 'SportsTeam', name: m.home_team },
-      { '@type': 'SportsTeam', name: m.away_team },
-    ],
-    ...(hasScore ? { result: `${m.home_score}–${m.away_score}` } : {}),
-  }
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SportsEvent',
+      name: `${m.home_team} vs ${m.away_team}`,
+      startDate: m.match_time,
+      sport: 'Soccer',
+      url: `${siteUrl}/maclar/${m.id}`,
+      description: `${m.home_team} vs ${m.away_team} maç analizi${m.prediction ? ` — Tahmin: ${m.prediction}` : ''}, ${m.league_name ?? 'futbol'}.`,
+      location: { '@type': 'Place', name: m.league_name ?? 'Futbol' },
+      competitor: [
+        { '@type': 'SportsTeam', name: m.home_team },
+        { '@type': 'SportsTeam', name: m.away_team },
+      ],
+      ...(hasScore ? { result: `${m.home_score}–${m.away_score}` } : {}),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: m.league_name ?? 'Maçlar', item: `${siteUrl}/tahminler/bugun` },
+        { '@type': 'ListItem', position: 3, name: `${m.home_team} vs ${m.away_team}`, item: `${siteUrl}/maclar/${m.id}` },
+      ],
+    },
+  ]
 
   return (
     <main style={{ maxWidth: '760px', margin: '0 auto', padding: 'var(--page-pad)', paddingTop: '2rem', paddingBottom: '5rem' }}>

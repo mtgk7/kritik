@@ -20,6 +20,7 @@ export default async function Navbar() {
   const links = [
     { href: '/hizmetler',         label: 'Ana Sayfa' },
     { href: '/',                   label: 'Maçlar' },
+    { href: '/tahminler/bugun',   label: 'Bugün' },
     { href: '/sonuclar',          label: 'Sonuçlar' },
     { href: '/karli-tahminler',   label: 'Kârlı' },
     { href: '/kupon',             label: 'Kupon' },
