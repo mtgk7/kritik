@@ -363,6 +363,17 @@ def run():
                     except Exception as _e:
                         log.debug(f"    3. taraf tahmin alınamadı: {_e}")
 
+                # H2H geçmiş maçları
+                match_h2h: list[dict] = []
+                try:
+                    from api_client import get_h2h as _get_h2h
+                    if home_id and away_id:
+                        match_h2h = _get_h2h(home_id, away_id)
+                        if match_h2h:
+                            log.info(f"    H2H: {len(match_h2h)} karşılaşma bulundu")
+                except Exception as _h2e:
+                    log.debug(f"    H2H alınamadı: {_h2e}")
+
                 # Web form analizi — SofaScore'dan son 5 maç (API key gerekmez)
                 home_web_form = None
                 away_web_form = None
@@ -395,6 +406,7 @@ def run():
                     market_odds=match_market_odds,
                     home_web_form=home_web_form,
                     away_web_form=away_web_form,
+                    h2h_fixtures=match_h2h,
                 )
 
                 all_missing = [

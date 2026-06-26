@@ -207,6 +207,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         {/* Skor — canlı veya bitmiş (Realtime güncellenir) */}
         <LiveScoreClient
           matchId={m.id}
+          matchTime={m.match_time}
           initialStatus={m.status}
           initialHomeScore={m.home_score}
           initialAwayScore={m.away_score}

@@ -3,17 +3,44 @@
   "short_name": "Kritik",
   "description": "xG, form ve güven skoruyla güçlendirilmiş AI futbol analizleri",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f7fb",
-  "theme_color": "#111827",
+  "background_color": "#09090f",
+  "theme_color": "#09090f",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
-  "screenshots": [
-    { "src": "/screenshot-mobile.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow" }
+  "shortcuts": [
+    {
+      "name": "Bugünkü Maçlar",
+      "short_name": "Maçlar",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Kupon Simülatörü",
+      "short_name": "Kupon",
+      "url": "/kupon",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sonuçlar",
+      "short_name": "Sonuçlar",
+      "url": "/sonuclar",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Kârlı Tahminler",
+      "short_name": "Kârlı",
+      "url": "/karli-tahminler",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ],
   "categories": ["sports", "entertainment"],
-  "lang": "tr"
+  "lang": "tr",
+  "dir": "ltr"
 }

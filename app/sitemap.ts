@@ -10,11 +10,19 @@ export default async function sitemap() {
     supabaseFetch<News>('news?select=id,published_at&is_published=eq.true'),
   ])
 
-  const statics = ['', '/haberler', '/oneriler', '/hizmetler'].map(path => ({
+  const statics = [
+    { path: '',                  priority: 1.0, freq: 'hourly'  },
+    { path: '/sonuclar',         priority: 0.9, freq: 'daily'   },
+    { path: '/istatistikler',    priority: 0.9, freq: 'daily'   },
+    { path: '/karli-tahminler',  priority: 0.8, freq: 'daily'   },
+    { path: '/haberler',         priority: 0.7, freq: 'daily'   },
+    { path: '/oneriler',         priority: 0.7, freq: 'daily'   },
+    { path: '/hizmetler',        priority: 0.6, freq: 'weekly'  },
+  ].map(({ path, priority, freq }) => ({
     url: `${BASE}${path}`,
     lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: path === '' ? 1 : 0.8,
+    changeFrequency: freq as 'hourly' | 'daily' | 'weekly',
+    priority,
   }))
 
   const matchPages = matches.map(m => ({

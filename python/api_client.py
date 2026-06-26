@@ -105,6 +105,14 @@ def get_team_card_stats(team_id: int, league_ref: str | int = "", season: int | 
     return {"yellow_cards": 0, "red_cards": 0, "played": 0}
 
 
+def get_h2h(home_id: int, away_id: int) -> list[dict]:
+    """Son 5 karşılıklı maçı döndürür. football_data provider'da boş liste."""
+    if _PROVIDER == "api_football":
+        from providers.api_football import get_h2h as _gh
+        return _gh(home_id, away_id)
+    return []
+
+
 def current_league_season(league_ref: str | int) -> int:
     if _PROVIDER == "api_football":
         from providers.api_football import current_season

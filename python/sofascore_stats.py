@@ -91,8 +91,91 @@ def fetch_h2h(event_id: int) -> dict | None:
     }
 
 
+def _fetch_event_stats(event_id: int, is_home: bool) -> dict:
+    """Tek maçın şut, possession, corner, pas istatistiklerini çeker."""
+    data = _get(f"https://api.sofascore.com/api/v1/event/{event_id}/statistics")
+    if not data:
+        return {}
+
+    stats_list = data.get("statistics", [])
+    period_data = next((s for s in stats_list if s.get("period") == "ALL"), None)
+    if not period_data:
+        return {}
+
+    side = "homeValue" if is_home else "awayValue"
+    values: dict[str, float] = {}
+    for group in period_data.get("groups", []):
+        for item in group.get("statisticsItems", []):
+            name = (item.get("name") or "").lower()
+            val  = item.get(side)
+            if val is not None:
+                try:
+                    values[name] = float(val)
+                except (ValueError, TypeError):
+                    pass
+
+    result: dict[str, float] = {}
+    for key in ["total shots", "shots total"]:
+        if key in values:
+            result["shots_total"] = values[key]; break
+    for key in ["shots on target", "on target"]:
+        if key in values:
+            result["shots_on_target"] = values[key]; break
+    if "ball possession" in values:
+        result["possession"] = values["ball possession"]
+    for key in ["accurate passes, %", "accurate passes %", "passes accurate, %"]:
+        if key in values:
+            result["pass_accuracy"] = values[key]; break
+    for key in ["corner kicks", "corners"]:
+        if key in values:
+            result["corners"] = values[key]; break
+    for key in ["fouls", "total fouls"]:
+        if key in values:
+            result["fouls"] = values[key]; break
+
+    return result
+
+
+def _fetch_event_goal_halves(event_id: int, team_id: int, is_home: bool) -> dict:
+    """Maçtaki gollerin ilk/ikinci yarı dağılımını çeker."""
+    data = _get(f"https://api.sofascore.com/api/v1/event/{event_id}/incidents")
+    if not data:
+        return {}
+
+    goals_1h = goals_2h = conceded_1h = conceded_2h = 0
+
+    for inc in data.get("incidents", []):
+        if inc.get("incidentType") != "goal":
+            continue
+        cls = inc.get("incidentClass", "")
+        if cls == "missedPenalty":
+            continue
+
+        minute    = inc.get("time", 0) or 0
+        inc_home  = inc.get("isHome", False)
+        own_goal  = cls == "ownGoal"
+
+        # team scored if: (incident belongs to same side as team) XOR own_goal
+        team_scored = (inc_home == is_home) != own_goal
+        first_half  = minute <= 45
+
+        if team_scored:
+            if first_half: goals_1h += 1
+            else:          goals_2h += 1
+        else:
+            if first_half: conceded_1h += 1
+            else:          conceded_2h += 1
+
+    return {
+        "goals_first_half":    goals_1h,
+        "goals_second_half":   goals_2h,
+        "conceded_first_half": conceded_1h,
+        "conceded_second_half": conceded_2h,
+    }
+
+
 def fetch_last5_by_team_id(team_id: int, team_name: str) -> dict | None:
-    """SofaScore team ID'si ile son 5 maçı çeker."""
+    """SofaScore team ID'si ile son 5 maçı ve detaylı istatistikleri çeker."""
     data = _get(f"https://api.sofascore.com/api/v1/team/{team_id}/events/last/0")
     if not data:
         return None
@@ -106,12 +189,19 @@ def fetch_last5_by_team_id(team_id: int, team_name: str) -> dict | None:
     matches = []
     wins = draws = losses = goals_for = goals_against = 0
 
+    stat_buckets: dict[str, list[float]] = {
+        "shots_total": [], "shots_on_target": [], "possession": [],
+        "pass_accuracy": [], "corners": [], "fouls": [],
+    }
+    goal_halves = {"g1": 0, "g2": 0, "c1": 0, "c2": 0}
+
     for e in finished:
         home = e.get("homeTeam", {})
         away = e.get("awayTeam", {})
         hs   = int((e.get("homeScore") or {}).get("current") or 0)
         as_  = int((e.get("awayScore") or {}).get("current") or 0)
         ts   = e.get("startTimestamp", 0)
+        eid  = e.get("id")
 
         is_home    = home.get("id") == team_id
         team_score = hs if is_home else as_
@@ -142,9 +232,37 @@ def fetch_last5_by_team_id(team_id: int, team_name: str) -> dict | None:
             "date":           date,
         })
 
+        # Detaylı istatistikler — SofaScore event ID ile
+        if eid:
+            ev_stats = _fetch_event_stats(eid, is_home)
+            for key in stat_buckets:
+                if key in ev_stats:
+                    stat_buckets[key].append(ev_stats[key])
+            time.sleep(0.3)
+
+            halves = _fetch_event_goal_halves(eid, team_id, is_home)
+            if halves:
+                goal_halves["g1"] += halves["goals_first_half"]
+                goal_halves["g2"] += halves["goals_second_half"]
+                goal_halves["c1"] += halves["conceded_first_half"]
+                goal_halves["c2"] += halves["conceded_second_half"]
+            time.sleep(0.3)
+
+    played = len(matches)
+
+    extra: dict[str, float] = {}
+    for key, vals in stat_buckets.items():
+        if vals:
+            extra[f"avg_{key}"] = round(sum(vals) / len(vals), 1)
+    if played > 0:
+        extra["avg_goals_first_half"]    = round(goal_halves["g1"] / played, 1)
+        extra["avg_goals_second_half"]   = round(goal_halves["g2"] / played, 1)
+        extra["avg_conceded_first_half"] = round(goal_halves["c1"] / played, 1)
+        extra["avg_conceded_second_half"] = round(goal_halves["c2"] / played, 1)
+
     return {
         "team":          team_name,
-        "played":        len(matches),
+        "played":        played,
         "wins":          wins,
         "draws":         draws,
         "losses":        losses,
@@ -153,6 +271,7 @@ def fetch_last5_by_team_id(team_id: int, team_name: str) -> dict | None:
         "yellow_cards":  0,
         "red_cards":     0,
         "matches":       matches,
+        **extra,
     }
 
 

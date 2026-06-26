@@ -173,6 +173,7 @@ def _build_prompt(
     market_odds: dict | None = None,
     home_web_form: dict | None = None,
     away_web_form: dict | None = None,
+    h2h_fixtures: list[dict] | None = None,
 ) -> str:
     home_id = _find_team_id(home_team, home_last5)
     away_id = _find_team_id(away_team, away_last5)
@@ -194,6 +195,47 @@ def _build_prompt(
 
     h_card_str = f"Son {hc['played']} maçta {hc['yellow_cards']} sarı, {hc['red_cards']} kırmızı kart" if hc.get("played") else "Kart verisi yok"
     a_card_str = f"Son {ac['played']} maçta {ac['yellow_cards']} sarı, {ac['red_cards']} kırmızı kart" if ac.get("played") else "Kart verisi yok"
+
+    # Ev/Deplasman split — mevcut last5 verisinden türet
+    def _split_stats(team_id: int | None, fixtures: list[dict], as_home: bool) -> dict:
+        filtered = [
+            f for f in fixtures
+            if (f["teams"]["home"].get("id") == team_id) == as_home
+        ]
+        return _calc_team_stats(team_id, filtered)
+
+    hh = _split_stats(home_id, home_last5, True)   # ev sahibi, evde
+    ha = _split_stats(home_id, home_last5, False)  # ev sahibi, deplasmanda
+    ah = _split_stats(away_id, away_last5, True)   # deplasman, evde
+    aa = _split_stats(away_id, away_last5, False)  # deplasman, deplasmanda
+
+    def _split_line(s: dict) -> str:
+        if s["played"] == 0:
+            return "veri yok"
+        return (f"{s['wins']}G/{s['draws']}B/{s['losses']}M "
+                f"| {s['goals_for']} attı / {s['goals_against']} yedi")
+
+    home_split_line = (
+        f"Evde ({hh['played']} maç): {_split_line(hh)}  "
+        f"| Dışarıda ({ha['played']} maç): {_split_line(ha)}"
+    ) if hh["played"] + ha["played"] > 0 else ""
+
+    away_split_line = (
+        f"Evde ({ah['played']} maç): {_split_line(ah)}  "
+        f"| Dışarıda ({aa['played']} maç): {_split_line(aa)}"
+    ) if ah["played"] + aa["played"] > 0 else ""
+
+    # H2H geçmiş bloğu
+    h2h_block = ""
+    if h2h_fixtures:
+        h2h_lines = []
+        for m in h2h_fixtures[:5]:
+            ht = m["teams"]["home"]
+            at = m["teams"]["away"]
+            g  = m.get("goals", {})
+            hg, ag = g.get("home", "?"), g.get("away", "?")
+            h2h_lines.append(f"  {ht.get('name','?')} {hg}-{ag} {at.get('name','?')}")
+        h2h_block = f"\n## H2H Geçmiş (Son {len(h2h_lines)} Maç)\n" + "\n".join(h2h_lines)
 
     # BTTS ve Over/Under istatistikleri
     h_btts = _calc_btts_stats(home_id, home_last5)
@@ -244,6 +286,30 @@ def _build_prompt(
             if kv and kv > 1:
                 p_kv = round(100 / kv)
                 market_block += f"KG Var %{p_kv} (oran {kv})\n"
+
+    # Value analizi — model vs piyasa karşılaştırması
+    value_block = ""
+    if market_odds:
+        mkt_probs = _implied_probs(
+            market_odds.get("ms1", 0),
+            market_odds.get("x",   0),
+            market_odds.get("ms2", 0),
+        )
+        if mkt_probs:
+            model_map  = {"MS1": p_ms1, "X": p_x, "MS2": p_ms2}
+            market_map = {"MS1": mkt_probs[0], "X": mkt_probs[1], "MS2": mkt_probs[2]}
+            value_lines = []
+            for outcome in ["MS1", "X", "MS2"]:
+                mp  = model_map[outcome]
+                mkp = market_map[outcome]
+                if mkp > 0:
+                    edge = round((mp / mkp - 1) * 100)
+                    if edge >= 10:
+                        value_lines.append(
+                            f"  ✓ VALUE: {outcome} — Model %{mp} vs Piyasa %{mkp} → +{edge}% kenar"
+                        )
+            if value_lines:
+                value_block = "\n## Value Analizi (Model > Piyasa ≥10%)\n" + "\n".join(value_lines) + "\n"
 
     # Üçüncü taraf tahmin bloğu — api-football motoru
     third_party_block = ""
@@ -297,6 +363,9 @@ def _build_prompt(
 
     neutral_note = "\nÖNEMLİ: Bu maç TARAFSIZ SAHADA oynanıyor. Ev sahibi avantajı yoktur; her iki takım eşit koşullarda. Tahmininde ev sahibi avantajını hesaba KATMA.\n" if is_neutral_venue else ""
 
+    h_split = f"\n{home_split_line}" if home_split_line else ""
+    a_split = f"\n{away_split_line}" if away_split_line else ""
+
     prompt = f"""Sen bir futbol analiz uzmanısın. Aşağıdaki gerçek istatistikleri kullanarak {home_team} - {away_team} maçı için Türkçe analiz yaz.
 
 KURAL: Sadece verilen sayıları kullan. Hiçbir istatistiği uydurma.{neutral_note}
@@ -304,16 +373,16 @@ KURAL: Sadece verilen sayıları kullan. Hiçbir istatistiği uydurma.{neutral_n
 ## {home_team} Son {hs['played']} Maç
 {home_5}
 Sonuçlar: {hs['wins']} galibiyet | {hs['draws']} beraberlik | {hs['losses']} mağlubiyet
-Gol: {hs['goals_for']} attı / {hs['goals_against']} yedi | xG/maç: {home_xg:.2f}
+Gol: {hs['goals_for']} attı / {hs['goals_against']} yedi | xG/maç: {home_xg:.2f}{h_split}
 Kartlar: {h_card_str}
 
 ## {away_team} Son {as_['played']} Maç
 {away_5}
 Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']} mağlubiyet
-Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}
+Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}{a_split}
 Kartlar: {a_card_str}
-
-{btts_block}{market_block}{third_party_block}{web_form_block}
+{h2h_block}
+{btts_block}{market_block}{value_block}{third_party_block}{web_form_block}
 
 ## Kadro Durumu
 Form skoru: {home_team} %{round(home_form*100)} — {away_team} %{round(away_form*100)}
@@ -439,6 +508,7 @@ def analyze_with_claude(
     market_odds: dict | None = None,
     home_web_form: dict | None = None,
     away_web_form: dict | None = None,
+    h2h_fixtures: list[dict] | None = None,
 ) -> dict:
     """
     Claude ile maç analizi yapar.
@@ -488,6 +558,7 @@ def analyze_with_claude(
             market_odds=market_odds,
             home_web_form=home_web_form,
             away_web_form=away_web_form,
+            h2h_fixtures=h2h_fixtures,
         )
 
         message = client.messages.create(

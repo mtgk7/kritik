@@ -38,16 +38,37 @@ def send(text: str) -> bool:
     return r.ok
 
 
+def _conf_emoji(conf: int) -> str:
+    if conf >= 80: return "🔥"
+    if conf >= 70: return "🟢"
+    return "🟡"
+
+
+def _format_alts(alternatives: list | None, pred: str, pred_c: int | None) -> str:
+    """Ana tahmin + alternatifler tek satırda."""
+    parts = []
+    if pred and pred_c:
+        parts.append(f"<b>{pred}</b> %{pred_c}")
+    if alternatives:
+        for a in alternatives[:3]:
+            p = a.get("prediction") or a.get("pred", "")
+            c = a.get("confidence", 0)
+            if p and c and f"{p}" != pred:
+                parts.append(f"{p} %{c}")
+    return "  |  ".join(parts) if parts else (pred or "—")
+
+
 def run():
     client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-    now        = datetime.now(timezone.utc)
-    day_start  = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    day_end    = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    now       = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    day_end   = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
 
     result = (
         client.table("matches")
-        .select("id,home_team,away_team,match_time,league_name,confidence_score,prediction,prediction_confidence,status")
+        .select("id,home_team,away_team,match_time,league_name,confidence_score,"
+                "prediction,prediction_confidence,alternatives,status")
         .gte("match_time", day_start)
         .lt("match_time", day_end)
         .gte("confidence_score", MIN_CONF)
@@ -61,30 +82,42 @@ def run():
         log.info("Bugün yüksek güven maçı yok — mesaj gönderilmedi")
         return
 
-    lines = [f"🎯 <b>Bugünün Yüksek Güven Maçları</b> — {now.strftime('%d %b')}\n"]
+    header = (
+        f"<b>Kritik — Bugünün Seçili Tahminleri</b>\n"
+        f"<i>{now.strftime('%d %B %Y')} · En az %{round(MIN_CONF*100)} güven</i>\n"
+        f"{'─' * 28}\n"
+    )
 
-    for m in matches[:6]:
+    blocks = [header]
+    for m in matches[:8]:
         conf    = int((m.get("confidence_score") or 0) * 100)
         pred    = m.get("prediction") or "—"
         pred_c  = m.get("prediction_confidence")
+        alts    = m.get("alternatives") or []
         league  = m.get("league_name") or ""
         mt      = m.get("match_time", "")
         try:
-            t = datetime.fromisoformat(mt.replace("Z", "+00:00")).strftime("%H:%M")
+            dt = datetime.fromisoformat(mt.replace("Z", "+00:00"))
+            t  = dt.strftime("%H:%M")
         except Exception:
             t = "—"
 
-        emoji = "🟢" if conf >= 75 else "🟡"
-        pred_str = f"{pred} %{pred_c}" if pred_c else pred
+        emoji    = _conf_emoji(conf)
+        pred_str = _format_alts(alts, pred, pred_c)
 
-        lines.append(
+        blocks.append(
             f"{emoji} <b>{m['home_team']} vs {m['away_team']}</b>\n"
-            f"   📅 {t}  •  {league}\n"
-            f"   🎲 <code>{pred_str}</code>  •  💯 <b>%{conf}</b> güven\n"
-            f"   🔗 <a href=\"{SITE_URL}/maclar/{m['id']}\">Detaylı analiz →</a>\n"
+            f"   📅 {t}  ·  {league}\n"
+            f"   🎯 {pred_str}\n"
+            f"   💯 Güven: <b>%{conf}</b>\n"
+            f"   🔗 <a href=\"{SITE_URL}/maclar/{m['id']}\">Detaylı analiz</a>\n"
         )
 
-    send("\n".join(lines))
+    blocks.append(
+        f"<i>Tüm tahminler → <a href=\"{SITE_URL}\">{SITE_URL}</a></i>"
+    )
+
+    send("\n".join(blocks))
     log.info(f"Telegram: {len(matches)} maç gönderildi")
 
 

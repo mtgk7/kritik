@@ -138,3 +138,14 @@ const TR: Record<string, string> = {
 export function translateTeam(name: string): string {
   return TR[name] ?? name
 }
+
+// Bir metin içindeki tüm İngilizce takım adlarını Türkçeye çevirir
+const _entries = Object.entries(TR).sort((a, b) => b[0].length - a[0].length)
+export function translateText(text: string): string {
+  let result = text
+  for (const [en, tr] of _entries) {
+    const regex = new RegExp(`\\b${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g')
+    result = result.replace(regex, tr)
+  }
+  return result
+}

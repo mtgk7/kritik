@@ -77,6 +77,19 @@ def get_last5_fixtures(team_id: int, league_id: int, season: int) -> list[dict]:
     return []
 
 
+def get_h2h(home_id: int, away_id: int, last: int = 5) -> list[dict]:
+    """Son N H2H maçını getir (her iki takım için)."""
+    try:
+        data = _get("fixtures", {
+            "h2h": f"{home_id}-{away_id}",
+            "last": last,
+            "status": "FT",
+        })
+        return data.get("response", [])
+    except Exception:
+        return []
+
+
 def get_fixture_statistics(fixture_id: int) -> list[dict]:
     if fixture_id in _FIXTURE_STATS_CACHE:
         return _FIXTURE_STATS_CACHE[fixture_id]
