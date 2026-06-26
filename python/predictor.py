@@ -117,6 +117,83 @@ def _poisson_1x2(home_xg: float, away_xg: float) -> tuple[int, int, int]:
     return round(ms1 / total * 100), round(x / total * 100), round(ms2 / total * 100)
 
 
+def _calc_streaks(team_id: int | None, fixtures: list[dict]) -> dict:
+    """En son başlayan consecutive unbeaten & scoring serisi."""
+    unbeaten = scoring = 0
+    for m in fixtures:
+        home    = m["teams"]["home"]
+        goals   = m.get("goals", {})
+        h_g     = goals.get("home") or 0
+        a_g     = goals.get("away") or 0
+        is_home = home.get("id") == team_id
+        my_g    = h_g if is_home else a_g
+        op_g    = a_g if is_home else h_g
+        winner  = home.get("winner")
+        lost    = (winner is True and not is_home) or (winner is False and is_home)
+
+        if unbeaten == scoring and not lost:
+            unbeaten += 1
+        elif unbeaten > scoring:
+            unbeaten += 0 if lost else 1
+
+        if my_g > 0:
+            scoring += 1
+        else:
+            break  # scoring serisi bitti
+
+        if lost:
+            break  # unbeaten serisi bitti
+
+    unbeaten_s = scoring  # recalculate simply
+    scoring_s  = 0
+    unbeaten_s = 0
+    _s_break = _u_break = False
+    for m in fixtures:
+        home    = m["teams"]["home"]
+        goals   = m.get("goals", {})
+        h_g     = goals.get("home") or 0
+        a_g     = goals.get("away") or 0
+        is_home = home.get("id") == team_id
+        my_g    = h_g if is_home else a_g
+        winner  = home.get("winner")
+        lost    = (winner is True and not is_home) or (winner is False and is_home)
+        if not _u_break:
+            if not lost: unbeaten_s += 1
+            else: _u_break = True
+        if not _s_break:
+            if my_g > 0: scoring_s += 1
+            else: _s_break = True
+
+    return {"unbeaten": unbeaten_s, "scoring": scoring_s}
+
+
+def _calc_halftime(team_id: int | None, fixtures: list[dict]) -> dict | None:
+    """İlk/ikinci yarı gol ortalamaları."""
+    h1_for = h1_ag = h2_for = h2_ag = n = 0
+    for m in fixtures:
+        sc      = m.get("score", {})
+        ht      = sc.get("halftime", {})
+        ft      = sc.get("fulltime", {})
+        ht_h    = (ht.get("home") or 0)
+        ht_a    = (ht.get("away") or 0)
+        ft_h    = (ft.get("home") or 0)
+        ft_a    = (ft.get("away") or 0)
+        is_home = m["teams"]["home"].get("id") == team_id
+        h1_my   = ht_h if is_home else ht_a
+        h1_op   = ht_a if is_home else ht_h
+        h2_my   = (ft_h - ht_h) if is_home else (ft_a - ht_a)
+        h2_op   = (ft_a - ht_a) if is_home else (ft_h - ht_h)
+        h1_for += max(h1_my, 0); h1_ag += max(h1_op, 0)
+        h2_for += max(h2_my, 0); h2_ag += max(h2_op, 0)
+        n += 1
+    if n == 0 or (h1_for + h1_ag + h2_for + h2_ag) == 0:
+        return None
+    return {
+        "h1_for":  round(h1_for / n, 1), "h1_ag": round(h1_ag / n, 1),
+        "h2_for":  round(h2_for / n, 1), "h2_ag": round(h2_ag / n, 1),
+    }
+
+
 def _split_missing(missing_players: list[dict]) -> tuple[list[dict], list[dict]]:
     """missing_players listesini sakat ve cezalı olarak ikiye ayırır."""
     injured    = [p for p in missing_players if p.get("reason", "").lower() != "ceza"]
@@ -236,6 +313,32 @@ def _build_prompt(
             hg, ag = g.get("home", "?"), g.get("away", "?")
             h2h_lines.append(f"  {ht.get('name','?')} {hg}-{ag} {at.get('name','?')}")
         h2h_block = f"\n## H2H Geçmiş (Son {len(h2h_lines)} Maç)\n" + "\n".join(h2h_lines)
+
+    # Seriler
+    h_streak = _calc_streaks(home_id, home_last5)
+    a_streak = _calc_streaks(away_id, away_last5)
+
+    def _streak_line(team: str, s: dict) -> str:
+        parts = []
+        if s["unbeaten"] >= 2: parts.append(f"yenilmez serisi: {s['unbeaten']} maç")
+        if s["scoring"] >= 3:  parts.append(f"gol serisi: {s['scoring']} maç")
+        return f"{team}: {' | '.join(parts)}" if parts else ""
+
+    streak_lines = list(filter(None, [_streak_line(home_team, h_streak), _streak_line(away_team, a_streak)]))
+    streak_block = ("\n## Seriler\n" + "\n".join(streak_lines)) if streak_lines else ""
+
+    # İlk/ikinci yarı gol analizi
+    h_ht = _calc_halftime(home_id, home_last5)
+    a_ht = _calc_halftime(away_id, away_last5)
+
+    ht_block = ""
+    if h_ht or a_ht:
+        ht_lines = ["\n## İlk/İkinci Yarı Gol Ortalaması"]
+        if h_ht:
+            ht_lines.append(f"{home_team}: 1.Y {h_ht['h1_for']} attı/{h_ht['h1_ag']} yedi | 2.Y {h_ht['h2_for']} attı/{h_ht['h2_ag']} yedi")
+        if a_ht:
+            ht_lines.append(f"{away_team}: 1.Y {a_ht['h1_for']} attı/{a_ht['h1_ag']} yedi | 2.Y {a_ht['h2_for']} attı/{a_ht['h2_ag']} yedi")
+        ht_block = "\n".join(ht_lines)
 
     # BTTS ve Over/Under istatistikleri
     h_btts = _calc_btts_stats(home_id, home_last5)
@@ -382,6 +485,7 @@ Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']}
 Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}{a_split}
 Kartlar: {a_card_str}
 {h2h_block}
+{streak_block}{ht_block}
 {btts_block}{market_block}{value_block}{third_party_block}{web_form_block}
 
 ## Kadro Durumu

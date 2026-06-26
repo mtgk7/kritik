@@ -23,6 +23,7 @@ export default async function Navbar() {
     { href: '/sonuclar',          label: 'Sonuçlar' },
     { href: '/karli-tahminler',   label: 'Kârlı' },
     { href: '/kupon',             label: 'Kupon' },
+    { href: '/takip',             label: 'Takip' },
     { href: '/haberler',          label: 'Haberler' },
     ...(isPremium ? [{ href: '/oneriler', label: 'AI Önerileri' }] : []),
     { href: '/editor-tahminleri', label: 'Editör' },

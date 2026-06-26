@@ -9,6 +9,7 @@ import { toggleFavorite } from '@/app/actions/favorites'
 import { translateTeam, translateText } from '@/lib/team-names'
 import OzelAnalizClient from '@/components/OzelAnalizClient'
 import AdSlot from '@/components/AdSlot'
+import HatirlatButton from '@/components/HatirlatButton'
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kritik-wine.vercel.app').replace(/\/$/, '')
 
@@ -36,6 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function MacDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
+  type NewsRow = { id: string; title: string; published_at: string; url: string | null }
   const [rows, oddsRows] = await Promise.all([
     supabaseFetch<Match>(`matches?select=*&id=eq.${id}&limit=1`),
     supabaseFetch<MatchOdds>(`match_odds?select=*&match_id=eq.${id}&order=scraped_at.desc&limit=9`),
@@ -66,6 +68,17 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   const unlocked = m.is_free_preview || isPremium
 
   // Favori + mevcut özel analiz kontrolü
+  // İlgili haberler
+  let relatedNews: NewsRow[] = []
+  try {
+    const ht = encodeURIComponent(m.home_team), at = encodeURIComponent(m.away_team)
+    relatedNews = await supabaseFetch<NewsRow>(
+      `news?select=id,title,published_at,url&is_published=eq.true`
+      + `&or=(title.ilike.*${ht}*,title.ilike.*${at}*)`
+      + `&order=published_at.desc&limit=3`
+    )
+  } catch {}
+
   let isFavorite = false
   let existingAnalysis: string | null = null
   try {
@@ -162,7 +175,10 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         <a href="/" style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
           ← Maçlar
         </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {!isFinished && (
+            <HatirlatButton matchTime={m.match_time} home={m.home_team} away={m.away_team} />
+          )}
           <ShareButtons
             title={`${m.home_team} vs ${m.away_team}`}
             url={`${siteUrl}/maclar/${m.id}`}
@@ -648,6 +664,23 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
         layout="in-article"
         style={{ margin: '2rem 0', textAlign: 'center' }}
       />
+
+      {/* İlgili haberler */}
+      {relatedNews.length > 0 && (
+        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+          <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '1rem', fontFamily: 'var(--font-display)' }}>
+            Güncel Haberler
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {relatedNews.map(n => (
+              <a key={n.id} href={n.url ?? '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', textDecoration: 'none', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', transition: 'border-color 0.15s' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.4 }}>{n.title}</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-tertiary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{new Date(n.published_at).toLocaleDateString('tr-TR')}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SofaScore detaylı analiz linki */}
       {true && (

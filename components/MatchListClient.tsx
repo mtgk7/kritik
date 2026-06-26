@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Match } from '@/lib/types'
 import { translateTeam } from '@/lib/team-names'
 import CountdownTimer from './CountdownTimer'
+
+const LS_KEY = 'kritik_fav_teams'
 
 const LEAGUE_ORDER = [
   'Süper Lig', 'Dünya Kupası 2026', 'Şampiyonlar Ligi',
@@ -19,11 +21,29 @@ const CONF_FILTERS = [
 
 type Props = { matches: Match[]; isPremium: boolean; favTeams?: string[] }
 
-export default function MatchListClient({ matches, isPremium, favTeams = [] }: Props) {
-  const [search, setSearch]     = useState('')
-  const [league, setLeague]     = useState('Tümü')
-  const [confIdx, setConfIdx]   = useState(0)
-  const [favOnly, setFavOnly]   = useState(false)
+export default function MatchListClient({ matches, isPremium, favTeams: dbFavTeams = [] }: Props) {
+  const [search, setSearch]       = useState('')
+  const [league, setLeague]       = useState('Tümü')
+  const [confIdx, setConfIdx]     = useState(0)
+  const [favOnly, setFavOnly]     = useState(false)
+  const [lsFavTeams, setLsFavTeams] = useState<string[]>([])
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(LS_KEY) ?? '[]')
+      if (Array.isArray(stored)) setLsFavTeams(stored)
+    } catch {}
+  }, [])
+
+  const favTeams = useMemo(() => [...new Set([...dbFavTeams, ...lsFavTeams])], [dbFavTeams, lsFavTeams])
+
+  function toggleLocalFav(team: string) {
+    setLsFavTeams(prev => {
+      const next = prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team]
+      try { localStorage.setItem(LS_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
 
   const leagues = useMemo(() => {
     const set = new Set(matches.map(m => m.league_name ?? 'Genel'))
@@ -39,7 +59,7 @@ export default function MatchListClient({ matches, isPremium, favTeams = [] }: P
       if (minC > 0 && (m.confidence_score ?? 0) < minC) return false
       if (q && !m.home_team.toLowerCase().includes(q) && !m.away_team.toLowerCase().includes(q)
              && !translateTeam(m.home_team).toLowerCase().includes(q) && !translateTeam(m.away_team).toLowerCase().includes(q)) return false
-      if (favOnly && favTeams.length > 0 && !favTeams.includes(m.home_team) && !favTeams.includes(m.away_team)) return false
+      if (favOnly && !favTeams.includes(m.home_team) && !favTeams.includes(m.away_team)) return false
       return true
     })
   }, [matches, league, confIdx, search, favOnly, favTeams])
@@ -213,6 +233,11 @@ export default function MatchListClient({ matches, isPremium, favTeams = [] }: P
                     isLast={i === arr.length - 1}
                     unlocked={isPremium || match.is_free_preview}
                     isFavTeam={favTeams.includes(match.home_team) || favTeams.includes(match.away_team)}
+                    onToggleFav={() => {
+                      if (favTeams.includes(match.home_team)) toggleLocalFav(match.home_team)
+                      else if (favTeams.includes(match.away_team)) toggleLocalFav(match.away_team)
+                      else toggleLocalFav(match.home_team)
+                    }}
                   />
                 ))}
               </div>
@@ -318,7 +343,7 @@ function FormChip({ score }: { score: number }) {
   )
 }
 
-function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast: boolean; unlocked: boolean; isFavTeam: boolean }) {
+function MatchRow({ match, isLast, unlocked, isFavTeam, onToggleFav }: { match: Match; isLast: boolean; unlocked: boolean; isFavTeam: boolean; onToggleFav: () => void }) {
   const conf     = match.confidence_score ?? 0
   const confPct  = Math.round(conf * 100)
   const isLive   = match.status === 'canlı'
@@ -349,7 +374,15 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-            {isFavTeam && <span style={{ fontSize: '0.65rem', color: 'var(--color-accent)', lineHeight: 1 }}>♥</span>}
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onToggleFav() }}
+              title={isFavTeam ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px',
+                fontSize: '0.8rem', lineHeight: 1, color: isFavTeam ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+                transition: 'color 0.15s', display: 'flex', alignItems: 'center',
+              }}
+            >{isFavTeam ? '♥' : '♡'}</button>
             {isLive && <span className="badge-live">Canlı</span>}
             <span style={{
               fontFamily: 'var(--font-display)', fontWeight: 700,

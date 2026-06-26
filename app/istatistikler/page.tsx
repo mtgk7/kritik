@@ -45,6 +45,14 @@ export default async function IstatistiklerPage() {
   const pct     = total > 0 ? Math.round((correct / total) * 100) : 0
 
   // Lige göre breakdown
+  // Bu haftaki özet
+  const now        = new Date()
+  const weekStart  = new Date(now.getTime() - 7 * 24 * 3600 * 1000)
+  const weekMatches = evaluated.filter(m => new Date(m.match_time) >= weekStart)
+  const weekTotal   = weekMatches.length
+  const weekCorrect = weekMatches.filter(m => m._correct).length
+  const weekPct     = weekTotal > 0 ? Math.round(weekCorrect / weekTotal * 100) : 0
+
   const byLeague: Record<string, { total: number; correct: number }> = {}
   for (const m of evaluated) {
     const l = m.league_name ?? 'Genel'
@@ -114,6 +122,22 @@ export default async function IstatistiklerPage() {
               valueColor={pct >= 60 ? 'var(--color-success)' : pct >= 50 ? 'var(--color-warning)' : 'var(--color-accent)'}
             />
           </div>
+
+          {/* Bu hafta özeti */}
+          {weekTotal > 0 && (
+            <div style={{ padding: '1.25rem', border: '1px solid var(--color-border)', borderRadius: '10px', marginBottom: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: 'var(--color-surface)' }}>
+              <div>
+                <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '0.2rem', fontFamily: 'var(--font-display)' }}>Bu Hafta</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-display)', color: weekPct >= 60 ? 'var(--color-success)' : weekPct >= 50 ? 'var(--color-warning)' : 'var(--color-accent)', lineHeight: 1 }}>
+                  %{weekPct}
+                  <span style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--color-text-tertiary)', marginLeft: '0.4rem' }}>{weekCorrect}/{weekTotal}</span>
+                </p>
+              </div>
+              <a href="/takip" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', textDecoration: 'none', padding: '0.4rem 0.9rem', border: '1.5px solid var(--color-border)', borderRadius: '7px' }}>
+                Tüm Takip →
+              </a>
+            </div>
+          )}
 
           {/* İsabet bar */}
           <div style={{ marginBottom: '3rem' }}>

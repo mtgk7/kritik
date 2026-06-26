@@ -50,6 +50,7 @@ function confColor(conf: number) {
 export default function KuponClient({ matches }: { matches: Match[] }) {
   const [kupon, setKupon] = useState<KuponItem[]>([])
   const [stake, setStake] = useState(100)
+  const [copied, setCopied] = useState(false)
 
   const totalOdds   = kupon.reduce((acc, k) => acc * k.odds, 1)
   const potWin      = Math.round(stake * totalOdds)
@@ -258,6 +259,30 @@ export default function KuponClient({ matches }: { matches: Match[] }) {
                       fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
                     }}>
                     Kuponu Temizle
+                  </button>
+                  <button onClick={() => {
+                    const date = new Date().toLocaleDateString('tr-TR')
+                    const lines = [
+                      `🎯 KRİTİK KUPON — ${date}`,
+                      '─'.repeat(32),
+                      ...kupon.map(k => `${k.home} vs ${k.away}\n→ ${k.pred} @ ${k.odds.toFixed(2)}`),
+                      '─'.repeat(32),
+                      `Toplam oran: ${totalOdds.toFixed(2)}`,
+                      `Bahis: ₺${stake} → Potansiyel: ₺${potWin.toLocaleString('tr-TR')}`,
+                      '',
+                      'kritik-wine.vercel.app',
+                    ]
+                    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    })
+                  }} style={{
+                    width: '100%', padding: '0.6rem', borderRadius: '7px',
+                    border: '1.5px solid var(--color-accent)', background: copied ? 'var(--color-accent)' : 'transparent',
+                    color: copied ? 'oklch(97% 0.005 255)' : 'var(--color-accent)', fontSize: '0.8rem',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.15s',
+                  }}>
+                    {copied ? 'Kopyalandı!' : 'Kuponu Kopyala'}
                   </button>
                 </div>
               </>

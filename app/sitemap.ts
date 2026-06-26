@@ -15,6 +15,7 @@ export default async function sitemap() {
     { path: '/sonuclar',         priority: 0.9, freq: 'daily'   },
     { path: '/istatistikler',    priority: 0.9, freq: 'daily'   },
     { path: '/karli-tahminler',  priority: 0.8, freq: 'daily'   },
+    { path: '/takip',            priority: 0.8, freq: 'daily'   },
     { path: '/haberler',         priority: 0.7, freq: 'daily'   },
     { path: '/oneriler',         priority: 0.7, freq: 'daily'   },
     { path: '/hizmetler',        priority: 0.6, freq: 'weekly'  },

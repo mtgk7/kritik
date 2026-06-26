@@ -66,6 +66,23 @@ def run():
     correct = sum(1 for m in evaluated if m["_correct"])
     pct     = round((correct / total) * 100) if total else 0
 
+    # Hipotetik P&L — her tahmine ₺100 bahis
+    pl = 0.0
+    for m in evaluated:
+        mo = m.get("market_odds") or {}
+        pred = (m.get("prediction") or "").upper()
+        odds_map = {"MS1": mo.get("ms1"), "X": mo.get("x"), "MS2": mo.get("ms2"),
+                    "2.5 ÜST": mo.get("over25"), "2.5 ALT": mo.get("under25")}
+        odds = odds_map.get(pred)
+        if not odds:
+            conf = m.get("confidence_score") or 0.6
+            odds = round(1 / conf * 1.05, 2) if conf > 0 else 1.70
+        if m["_correct"]:
+            pl += 100 * (odds - 1)
+        else:
+            pl -= 100
+    pl = round(pl)
+
     # En iyi lig
     league_stats: dict[str, dict] = {}
     for m in evaluated:
@@ -78,12 +95,15 @@ def run():
 
     best_league = max(league_stats.items(), key=lambda x: x[1]["correct"] / x[1]["total"] if x[1]["total"] >= 3 else 0, default=None)
 
-    emoji = "🟢" if pct >= 65 else "🟡" if pct >= 50 else "🔴"
+    emoji     = "🟢" if pct >= 65 else "🟡" if pct >= 50 else "🔴"
+    pl_emoji  = "📈" if pl >= 0 else "📉"
+    pl_str    = f"+₺{pl:,}" if pl >= 0 else f"-₺{abs(pl):,}"
 
     lines = [
-        f"📊 <b>Haftalık Performans Raporu</b>",
+        f"📊 <b>Kritik — Haftalık Performans</b>",
         f"📅 {(now - timedelta(days=7)).strftime('%d %b')} – {now.strftime('%d %b %Y')}\n",
-        f"{emoji} İsabet oranı: <b>%{pct}</b>  ({correct}/{total} maç)\n",
+        f"{emoji} İsabet oranı: <b>%{pct}</b>  ({correct}/{total} tahmin)",
+        f"{pl_emoji} Hipotetik P&L (₺100/tahmin): <b>{pl_str}</b>\n",
     ]
 
     if best_league and best_league[1]["total"] >= 3:
