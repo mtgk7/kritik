@@ -6,7 +6,7 @@ import { Match, Last5Data, MatchOdds } from '@/lib/types'
 import LiveScoreClient from '@/components/LiveScoreClient'
 import ShareButtons from '@/components/ShareButtons'
 import { toggleFavorite } from '@/app/actions/favorites'
-import { translateTeam } from '@/lib/team-names'
+import { translateTeam, translateText } from '@/lib/team-names'
 import OzelAnalizClient from '@/components/OzelAnalizClient'
 import AdSlot from '@/components/AdSlot'
 
@@ -128,7 +128,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
 
   // Analiz paragrafları
   const analysisParagraphs = m.analysis
-    ? m.analysis.split(/\.\s+/).filter(s => s.trim().length > 10).map(s => s.trim().endsWith('.') ? s.trim() : s.trim() + '.')
+    ? translateText(m.analysis).split(/\.\s+/).filter(s => s.trim().length > 10).map(s => s.trim().endsWith('.') ? s.trim() : s.trim() + '.')
     : []
 
   const jsonLd = {
@@ -288,8 +288,8 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
             {m.home_xg != null && m.away_xg != null && (
               <CompareBar
                 label="xG Beklentisi (maç başı)"
-                leftLabel={m.home_team}
-                rightLabel={m.away_team}
+                leftLabel={translateTeam(m.home_team)}
+                rightLabel={translateTeam(m.away_team)}
                 leftValue={homeXg}
                 rightValue={awayXg}
                 leftPct={(homeXg / (homeXg + awayXg)) * 100}
@@ -304,8 +304,8 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
             {m.home_form_score != null && m.away_form_score != null && (
               <CompareBar
                 label="Son Form Skoru"
-                leftLabel={m.home_team}
-                rightLabel={m.away_team}
+                leftLabel={translateTeam(m.home_team)}
+                rightLabel={translateTeam(m.away_team)}
                 leftValue={homeForm}
                 rightValue={awayForm}
                 leftPct={homeForm}
@@ -335,6 +335,78 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
                 </p>
               </div>
             )}
+
+            {/* Son 5 maç türetilmiş istatistikler */}
+            {(() => {
+              const h = m.home_last5_data
+              const a = m.away_last5_data
+              if (!h || !a || h.played === 0 || a.played === 0) return null
+              const hWinPct = Math.round((h.wins / h.played) * 100)
+              const aWinPct = Math.round((a.wins / a.played) * 100)
+              const hGolAv  = h.goals_for / h.played
+              const aGolAv  = a.goals_for / a.played
+              const hYenAv  = h.goals_against / h.played
+              const aYenAv  = a.goals_against / a.played
+              const winTotal = hWinPct + aWinPct || 1
+              const golTotal = hGolAv + aGolAv || 1
+              const yenTotal = hYenAv + aYenAv || 1
+              return (
+                <>
+                  <CompareBar label="Galibiyet Oranı (son 5 maç)"
+                    leftLabel={translateTeam(m.home_team)} rightLabel={translateTeam(m.away_team)}
+                    leftValue={hWinPct} rightValue={aWinPct}
+                    leftPct={(hWinPct / winTotal) * 100} rightPct={(aWinPct / winTotal) * 100}
+                    leftDisplay={`%${hWinPct}`} rightDisplay={`%${aWinPct}`}
+                    color="var(--color-success)" />
+                  <CompareBar label="Gol Ortalaması (son 5 maç)"
+                    leftLabel={translateTeam(m.home_team)} rightLabel={translateTeam(m.away_team)}
+                    leftValue={hGolAv} rightValue={aGolAv}
+                    leftPct={(hGolAv / golTotal) * 100} rightPct={(aGolAv / golTotal) * 100}
+                    leftDisplay={hGolAv.toFixed(1)} rightDisplay={aGolAv.toFixed(1)}
+                    color="var(--color-accent)" />
+                  <CompareBar label="Yenilen Gol Ort. (son 5 maç)"
+                    leftLabel={translateTeam(m.home_team)} rightLabel={translateTeam(m.away_team)}
+                    leftValue={hYenAv} rightValue={aYenAv}
+                    leftPct={(hYenAv / yenTotal) * 100} rightPct={(aYenAv / yenTotal) * 100}
+                    leftDisplay={hYenAv.toFixed(1)} rightDisplay={aYenAv.toFixed(1)}
+                    color="oklch(52% 0.18 240)" />
+                </>
+              )
+            })()}
+
+            {/* SofaScore gelişmiş istatistikler */}
+            {(() => {
+              const h = m.home_last5_data
+              const a = m.away_last5_data
+              if (!h || !a) return null
+              const bars: { label: string; hv: number; av: number; unit?: string }[] = []
+              if (h.avg_shots        != null && a.avg_shots        != null) bars.push({ label: 'Şut Ortalaması',    hv: h.avg_shots,        av: a.avg_shots        })
+              if (h.avg_shots_on_target != null && a.avg_shots_on_target != null) bars.push({ label: 'İsabetli Şut',     hv: h.avg_shots_on_target, av: a.avg_shots_on_target })
+              if (h.avg_possession   != null && a.avg_possession   != null) bars.push({ label: 'Top Hakimiyeti',   hv: h.avg_possession,   av: a.avg_possession,   unit: '%' })
+              if (h.avg_pass_accuracy != null && a.avg_pass_accuracy != null) bars.push({ label: 'Pas Doğruluğu',    hv: h.avg_pass_accuracy, av: a.avg_pass_accuracy, unit: '%' })
+              if (h.avg_corners      != null && a.avg_corners      != null) bars.push({ label: 'Corner Ortalaması', hv: h.avg_corners,      av: a.avg_corners      })
+              if (h.avg_goals_first_half  != null && a.avg_goals_first_half  != null) bars.push({ label: '1. Yarı Gol Ort.', hv: h.avg_goals_first_half,  av: a.avg_goals_first_half  })
+              if (h.avg_goals_second_half != null && a.avg_goals_second_half != null) bars.push({ label: '2. Yarı Gol Ort.', hv: h.avg_goals_second_half, av: a.avg_goals_second_half })
+              if (bars.length === 0) return null
+              return (
+                <>
+                  {bars.map((b, i) => {
+                    const total = b.hv + b.av || 1
+                    const lPct  = b.unit === '%' ? b.hv : (b.hv / total) * 100
+                    const rPct  = b.unit === '%' ? b.av : (b.av / total) * 100
+                    return (
+                      <CompareBar key={i} label={b.label}
+                        leftLabel={translateTeam(m.home_team)} rightLabel={translateTeam(m.away_team)}
+                        leftValue={b.hv} rightValue={b.av}
+                        leftPct={lPct} rightPct={rPct}
+                        leftDisplay={`${b.hv.toFixed(b.unit === '%' ? 0 : 1)}${b.unit ?? ''}`}
+                        rightDisplay={`${b.av.toFixed(b.unit === '%' ? 0 : 1)}${b.unit ?? ''}`}
+                        color="var(--color-accent)" />
+                    )
+                  })}
+                </>
+              )
+            })()}
           </div>
         </section>
       )}
@@ -389,9 +461,9 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
           <SectionTitle>Algoritma Yorumu</SectionTitle>
           <div style={{
             padding: '1.5rem',
-            background: 'var(--color-surface-2)',
+            background: 'var(--color-accent-subtle)',
             borderRadius: '12px',
-            borderLeft: '3px solid var(--color-accent)',
+            border: '1px solid oklch(54% 0.22 25 / 0.14)',
           }}>
             {analysisParagraphs.length > 1 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -409,7 +481,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
               </div>
             ) : (
               <p style={{ fontSize: '0.92rem', color: 'var(--color-text-primary)', lineHeight: 1.7, margin: 0 }}
-                dangerouslySetInnerHTML={{ __html: m.analysis.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
+                dangerouslySetInnerHTML={{ __html: translateText(m.analysis).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
               />
             )}
           </div>
@@ -426,6 +498,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
           </div>
         </section>
       )}
+
 
       {/* ── Temel Metrikler ─────────────────────────────────────────────── */}
       <section style={{ marginBottom: '2.5rem' }}>
@@ -451,7 +524,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.5rem', marginBottom: '1.25rem', alignItems: 'center' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-success)' }}>{m.h2h_data.home_wins}</div>
-              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.home_team}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{translateTeam(m.home_team)}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-text-tertiary)' }}>{m.h2h_data.draws}</div>
@@ -459,7 +532,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '2.5rem', lineHeight: 1, color: 'var(--color-accent)' }}>{m.h2h_data.away_wins}</div>
-              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.away_team}</div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{translateTeam(m.away_team)}</div>
             </div>
           </div>
 
@@ -525,7 +598,7 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
 
         </div>
         {/* Kilit overlay */}
-        {!unlocked && <PremiumGate />}
+        {!unlocked && <PremiumGate confPct={confPct} />}
       </div>
 
       {/* ── Piyasa Oranları ─────────────────────────────────────────────── */}
@@ -589,50 +662,60 @@ export default async function MacDetayPage({ params }: { params: Promise<{ id: s
   )
 }
 
-function PremiumGate() {
+function PremiumGate({ confPct }: { confPct: number }) {
   return (
     <div style={{
       position: 'absolute',
       left: 0, right: 0, bottom: 0,
-      top: '180px',
+      top: '200px',
       display: 'flex',
       alignItems: 'flex-end',
       justifyContent: 'center',
-      background: 'linear-gradient(to bottom, transparent 0%, var(--color-base) 45%)',
+      background: 'linear-gradient(to bottom, transparent 0%, var(--color-base) 38%)',
     }}>
-      <div style={{
-        textAlign: 'center',
-        maxWidth: '420px',
-        padding: '2rem 1.5rem',
-      }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <svg width="36" height="44" viewBox="0 0 36 44" fill="none" style={{ margin: '0 auto', display: 'block' }}>
-            <rect x="2" y="18" width="32" height="24" rx="5" stroke="var(--color-premium)" strokeWidth="2.5"/>
-            <path d="M9 18V12a9 9 0 0 1 18 0v6" stroke="var(--color-premium)" strokeWidth="2.5" strokeLinecap="round"/>
-          </svg>
-        </div>
+      <div style={{ textAlign: 'center', maxWidth: '400px', padding: '2rem 1.5rem' }}>
+        {confPct > 0 && (
+          <div style={{ marginBottom: '0.6rem' }}>
+            <span style={{
+              fontFamily: 'var(--font-display)', fontWeight: 700,
+              fontSize: '0.95rem', letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: confPct >= 70 ? 'var(--color-success)' : 'var(--color-warning)',
+            }}>
+              Bu maçta %{confPct} güven sinyali
+            </span>
+          </div>
+        )}
         <h2 style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,
-          fontSize: '1.5rem', letterSpacing: '0.04em', textTransform: 'uppercase',
-          color: 'var(--color-text-primary)', lineHeight: 1.1, marginBottom: '0.6rem',
+          fontSize: '1.4rem', letterSpacing: '0.04em', textTransform: 'uppercase',
+          color: 'var(--color-text-primary)', lineHeight: 1.1, marginBottom: '0.55rem',
         }}>
-          Detaylı Analiz Premium'a Özel
+          Analizi Görüntüle
         </h2>
-        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-          AI tahmin dağılımı, xG karşılaştırması, son 5 maç detayı ve kadro durumu
-          için premium üyeliğe geç. Her gün 4 maç ücretsiz açık.
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
+          AI tahmin dağılımı, xG karşılaştırması, son 5 maç ve kadro durumu premium üyeliğe özel. Her gün 4 maç ücretsiz.
         </p>
-        <a href="/hizmetler" style={{
-          display: 'inline-block',
-          fontFamily: 'var(--font-display)', fontWeight: 700,
-          fontSize: '0.92rem', letterSpacing: '0.05em', textTransform: 'uppercase',
-          color: 'oklch(97% 0.005 255)',
-          background: 'linear-gradient(135deg, oklch(55% 0.18 35), oklch(42% 0.15 20))',
-          textDecoration: 'none', borderRadius: '9px', padding: '0.75rem 2rem',
-          boxShadow: '0 4px 14px oklch(30% 0.1 35 / 0.45)',
-        }}>
-          ⭐ Premium Ol
-        </a>
+        <div style={{ display: 'flex', gap: '0.65rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <a href="/hizmetler" style={{
+            display: 'inline-block',
+            fontFamily: 'var(--font-display)', fontWeight: 700,
+            fontSize: '0.88rem', letterSpacing: '0.05em', textTransform: 'uppercase',
+            color: 'oklch(97% 0.005 255)',
+            background: 'var(--color-accent)',
+            textDecoration: 'none', borderRadius: '8px', padding: '0.7rem 1.75rem',
+          }}>
+            Premium Ol
+          </a>
+          <a href="/giris" style={{
+            display: 'inline-block',
+            fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.85rem',
+            color: 'var(--color-text-secondary)', textDecoration: 'none',
+            borderRadius: '8px', padding: '0.7rem 1.25rem',
+            border: '1.5px solid var(--color-border)',
+          }}>
+            Giriş Yap
+          </a>
+        </div>
       </div>
     </div>
   )
@@ -655,7 +738,7 @@ function Last5Card({ data }: { data: Last5Data }) {
         color: 'var(--color-text-primary)', marginBottom: '0.75rem',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
-        {data.team}
+        {translateTeam(data.team)}
       </p>
 
       {/* Form indikatörleri */}
@@ -705,7 +788,7 @@ function Last5Card({ data }: { data: Last5Data }) {
               fontSize: '0.72rem', color: 'var(--color-text-secondary)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
-              {mx.was_home ? 'Ev' : 'Dep'} — {mx.opponent}
+              {mx.was_home ? 'Ev' : 'Dep'} — {translateTeam(mx.opponent)}
             </span>
             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-primary)', whiteSpace: 'nowrap' }}>
               {mx.team_score}–{mx.opponent_score}

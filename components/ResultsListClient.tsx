@@ -74,6 +74,30 @@ export default function ResultsListClient({ matches }: Props) {
 
   return (
     <div>
+      {/* Son form şeridi */}
+      {decided.length > 0 && (() => {
+        const last = decided.slice(0, 7)
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-display)' }}>
+              Son Form
+            </span>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              {last.map((m, i) => (
+                <div key={i} style={{
+                  width: '24px', height: '24px', borderRadius: '5px', flexShrink: 0,
+                  background: m.prediction_correct ? 'var(--color-success)' : 'var(--color-accent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.6rem', fontWeight: 800, color: 'oklch(97% 0.005 255)',
+                }}>
+                  {m.prediction_correct ? '✓' : '✗'}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* İstatistik başlığı */}
       {decided.length > 0 && (
         <div style={{
