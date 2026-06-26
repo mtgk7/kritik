@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Match } from '@/lib/types'
 import { translateTeam } from '@/lib/team-names'
+import CountdownTimer from './CountdownTimer'
 
 const LEAGUE_ORDER = [
   'Süper Lig', 'Dünya Kupası 2026', 'Şampiyonlar Ligi',
@@ -50,21 +51,49 @@ export default function MatchListClient({ matches, isPremium, favTeams = [] }: P
   }), [filtered])
 
   // Turnuvaya göre grupla
+  // Bugünün en güvenilir tahmini (yakında, min %55, sadece default filtrede göster)
+  const featuredMatch = useMemo(() => {
+    const now = new Date()
+    const todayEnd = new Date(now)
+    todayEnd.setHours(23, 59, 59, 999)
+    let best: Match | null = null
+    for (const m of matches) {
+      if (m.status !== 'yakında') continue
+      const t = new Date(m.match_time)
+      if (t < now || t > todayEnd) continue
+      if ((m.confidence_score ?? 0) < 0.55) continue
+      if (!best || (m.confidence_score ?? 0) > (best.confidence_score ?? 0)) best = m
+    }
+    return best
+  }, [matches])
+
+  const isDefaultFilter = !search && league === 'Tümü' && confIdx === 0 && !favOnly
+
   const byLeague = useMemo(() => {
+    const excludeId = isDefaultFilter ? featuredMatch?.id : null
     const map: Record<string, Match[]> = {}
     for (const m of sorted) {
+      if (m.id === excludeId) continue
       const k = m.league_name ?? 'Genel'
       if (!map[k]) map[k] = []
       map[k].push(m)
     }
     return map
-  }, [sorted])
+  }, [sorted, isDefaultFilter, featuredMatch])
 
   const leagueKeys = LEAGUE_ORDER.filter(l => byLeague[l]?.length > 0)
     .concat(Object.keys(byLeague).filter(l => !LEAGUE_ORDER.includes(l)))
 
   return (
     <div>
+      {/* Günün öne çıkan tahmini — sadece filtre yokken */}
+      {isDefaultFilter && featuredMatch && (
+        <FeaturedMatch
+          match={featuredMatch}
+          unlocked={isPremium || featuredMatch.is_free_preview}
+        />
+      )}
+
       {/* Arama + Filtreler */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '1.75rem', alignItems: 'center' }}>
         {/* Arama */}
@@ -195,6 +224,85 @@ export default function MatchListClient({ matches, isPremium, favTeams = [] }: P
   )
 }
 
+function FeaturedMatch({ match, unlocked }: { match: Match; unlocked: boolean }) {
+  const conf = match.confidence_score ?? 0
+  const confPct = Math.round(conf * 100)
+  const confColor = conf >= 0.7 ? 'var(--color-success)' : 'var(--color-warning)'
+  const isLocked = match.prediction === '__locked__'
+  const showPred = !isLocked && unlocked && match.prediction
+
+  return (
+    <a href={`/maclar/${match.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', marginBottom: '2rem' }}>
+      <div style={{
+        padding: '1.25rem 1.5rem',
+        background: 'var(--color-surface-2)',
+        border: '1.5px solid var(--color-border-strong)',
+        borderRadius: '12px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+          <span style={{
+            fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em',
+            textTransform: 'uppercase', color: 'var(--color-warning)',
+            fontFamily: 'var(--font-display)',
+          }}>
+            ★ Günün Tahmini
+          </span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
+            {match.league_name ?? ''}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{
+              fontFamily: 'var(--font-display)', fontWeight: 700,
+              fontSize: 'clamp(1.05rem, 3vw, 1.4rem)', letterSpacing: '0.03em',
+              textTransform: 'uppercase', color: 'var(--color-text-primary)', lineHeight: 1.1,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {translateTeam(match.home_team)}
+              <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 400, fontSize: '0.6em', margin: '0 0.4rem' }}>vs</span>
+              {translateTeam(match.away_team)}
+            </div>
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              <CountdownTimer matchTime={match.match_time} />
+              {showPred && (
+                <span className="badge-prediction" style={{ fontSize: '0.68rem' }}>
+                  {match.prediction}
+                </span>
+              )}
+              {!showPred && !unlocked && (
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)' }}>
+                  Tahmin — Premium
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{
+              fontFamily: 'var(--font-display)', fontWeight: 700,
+              fontSize: '2.25rem', lineHeight: 1,
+              color: unlocked ? confColor : 'var(--color-border-strong)',
+              filter: unlocked ? 'none' : 'blur(5px)',
+              userSelect: unlocked ? 'auto' : 'none',
+            }}>
+              {confPct}
+            </div>
+            <div style={{
+              fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.08em', marginTop: '0.1rem',
+              color: unlocked ? 'var(--color-text-tertiary)' : 'var(--color-premium)',
+            }}>
+              {unlocked ? 'Güven' : 'Premium'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  )
+}
+
 function FormChip({ score }: { score: number }) {
   const isGood = score >= 2.0
   const isOk   = score >= 1.2
@@ -301,6 +409,7 @@ function MatchRow({ match, isLast, unlocked, isFavTeam }: { match: Match; isLast
                 {dateLabel}
               </span>
             )}
+            {!isLive && !isFinished && <CountdownTimer matchTime={match.match_time} />}
             {!isFinished && unlocked && match.home_xg != null && (
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
                 xG {match.home_xg.toFixed(2)} / {match.away_xg?.toFixed(2)}
