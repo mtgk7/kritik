@@ -22,9 +22,6 @@ API_KEY    = os.getenv("API_FOOTBALL_KEY", "")
 API_HOST   = os.getenv("API_FOOTBALL_HOST", "v3.football.api-sports.io")
 API_BASE   = f"https://{API_HOST}"
 
-# FootyStats API (footystats.org) — BTTS%, 2.5 Üst%, PPG, form istatistikleri
-FOOTYSTATS_API_KEY = os.getenv("FOOTYSTATS_API_KEY", "")
-
 # Supabase — direkt bağlantı (service role key, RLS bypass)
 SUPABASE_URL         = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]

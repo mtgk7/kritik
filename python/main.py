@@ -279,16 +279,6 @@ def run():
         log.warning(f"Piyasa oranları yüklenemedi: {e}")
         market_odds_index = {}
 
-    # FootyStats istatistiklerini başta çek (API key varsa)
-    footystats_index: dict = {}
-    _footystats_key = os.getenv("FOOTYSTATS_API_KEY", "").strip()
-    if _footystats_key:
-        try:
-            from providers.footystats import fetch_todays_index
-            footystats_index = fetch_todays_index(_footystats_key)
-            log.info(f"FootyStats: {len(footystats_index)} maç yüklendi")
-        except Exception as e:
-            log.warning(f"FootyStats yüklenemedi: {e}")
 
     # Provider'a göre lig listesi seç
     leagues = FOOTBALL_DATA_LEAGUES if PROVIDER == "football_data" else [str(i) for i in LEAGUE_IDS]
@@ -381,17 +371,6 @@ def run():
                     srcs = ", ".join(match_market_odds.get("sources", []))
                     log.info(f"    Piyasa oranı bulundu ({srcs}): MS1={match_market_odds.get('ms1')} X={match_market_odds.get('x')} MS2={match_market_odds.get('ms2')}")
 
-                # FootyStats araması
-                match_footystats_data = None
-                if footystats_index:
-                    from providers.footystats import _norm as _fsnorm, extract_signals as _fs_extract
-                    _fs_key = f"{_fsnorm(home_name)}|{_fsnorm(away_name)}"
-                    _fs_match = footystats_index.get(_fs_key)
-                    if _fs_match:
-                        match_footystats_data = _fs_extract(_fs_match, home_name, away_name)
-                        if match_footystats_data:
-                            log.info(f"    FootyStats bulundu: BTTS%={match_footystats_data.get('btts_pct')} O25%={match_footystats_data.get('o25_pct')}")
-
                 # Claude AI analizi (API key yoksa kural tabanlı)
                 ai_result = analyze_with_claude(
                     home_name, away_name,
@@ -404,7 +383,6 @@ def run():
                     third_party_pred=third_party_pred,
                     league_ref=league_ref,
                     market_odds=match_market_odds,
-                    footystats_data=match_footystats_data,
                 )
 
                 all_missing = [
