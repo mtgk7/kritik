@@ -171,6 +171,7 @@ def _build_prompt(
     third_party_pred: dict | None = None,
     is_neutral_venue: bool = False,
     market_odds: dict | None = None,
+    footystats_data: dict | None = None,
 ) -> str:
     home_id = _find_team_id(home_team, home_last5)
     away_id = _find_team_id(away_team, away_last5)
@@ -269,6 +270,29 @@ def _build_prompt(
             f"{h2h_line}"
         )
 
+    # FootyStats analizi bloğu
+    footystats_block = ""
+    if footystats_data:
+        fs_lines = ["\n## FootyStats Analizi"]
+        if footystats_data.get("btts_pct"):
+            fs_lines.append(f"BTTS (Karşılıklı Gol) İhtimali: %{footystats_data['btts_pct']}")
+        if footystats_data.get("o25_pct"):
+            fs_lines.append(f"2.5 Üst İhtimali: %{footystats_data['o25_pct']}")
+        if footystats_data.get("home_ppg") and footystats_data.get("away_ppg"):
+            fs_lines.append(f"PPG (maç başı puan): {home_team} {footystats_data['home_ppg']} — {away_team} {footystats_data['away_ppg']}")
+        hgf = footystats_data.get("home_goals_for"); agf = footystats_data.get("away_goals_for")
+        hga = footystats_data.get("home_goals_against"); aga = footystats_data.get("away_goals_against")
+        if hgf and agf:
+            fs_lines.append(f"Gol ort.: {home_team} {hgf}/maç atar — {away_team} {agf}/maç atar")
+        if hga and aga:
+            fs_lines.append(f"Yenilen gol ort.: {home_team} {hga}/maç — {away_team} {aga}/maç")
+        if footystats_data.get("home_form_str") or footystats_data.get("away_form_str"):
+            hfs = footystats_data.get("home_form_str", "?")
+            afs = footystats_data.get("away_form_str", "?")
+            fs_lines.append(f"Son form: {home_team} {hfs} — {away_team} {afs}")
+        if len(fs_lines) > 1:
+            footystats_block = "\n".join(fs_lines)
+
     neutral_note = "\nÖNEMLİ: Bu maç TARAFSIZ SAHADA oynanıyor. Ev sahibi avantajı yoktur; her iki takım eşit koşullarda. Tahmininde ev sahibi avantajını hesaba KATMA.\n" if is_neutral_venue else ""
 
     prompt = f"""Sen bir futbol analiz uzmanısın. Aşağıdaki gerçek istatistikleri kullanarak {home_team} - {away_team} maçı için Türkçe analiz yaz.
@@ -287,7 +311,7 @@ Sonuçlar: {as_['wins']} galibiyet | {as_['draws']} beraberlik | {as_['losses']}
 Gol: {as_['goals_for']} attı / {as_['goals_against']} yedi | xG/maç: {away_xg:.2f}
 Kartlar: {a_card_str}
 
-{btts_block}{market_block}{third_party_block}
+{btts_block}{market_block}{third_party_block}{footystats_block}
 
 ## Kadro Durumu
 Form skoru: {home_team} %{round(home_form*100)} — {away_team} %{round(away_form*100)}
@@ -411,6 +435,7 @@ def analyze_with_claude(
     third_party_pred: dict | None = None,
     league_ref: str | int = "",
     market_odds: dict | None = None,
+    footystats_data: dict | None = None,
 ) -> dict:
     """
     Claude ile maç analizi yapar.
@@ -458,6 +483,7 @@ def analyze_with_claude(
             third_party_pred=third_party_pred,
             is_neutral_venue=is_neutral,
             market_odds=market_odds,
+            footystats_data=footystats_data,
         )
 
         message = client.messages.create(
