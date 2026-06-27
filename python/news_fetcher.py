@@ -77,19 +77,23 @@ def translate_to_turkish(text: str) -> str:
 
 
 def _mymemory_translate(text: str) -> str:
-    """MyMemory ücretsiz API ile İngilizce → Türkçe çeviri."""
+    """MyMemory ücretsiz API ile İngilizce → Türkçe çeviri (10k kelime/gün)."""
     if not text or len(text.strip()) < 3:
         return text
     try:
         resp = requests.get(
             "https://api.mymemory.translated.net/get",
-            params={"q": text[:500], "langpair": "en|tr"},
+            params={"q": text[:500], "langpair": "en|tr", "de": "gokbukmert@gmail.com"},
             timeout=8,
         )
         data = resp.json()
         translated = data.get("responseData", {}).get("translatedText", "")
-        if translated and translated.upper() != text.upper():
-            return translated
+        # MyMemory limit uyarısını yakala
+        if not translated or "MYMEMORY WARNING" in translated.upper():
+            return text
+        if translated.upper() == text.upper():
+            return text
+        return translated
     except Exception as e:
         log.debug(f"MyMemory hatası: {e}")
     return text
