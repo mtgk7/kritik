@@ -76,46 +76,71 @@ def translate_to_turkish(text: str) -> str:
         return text
 
 
-def translate_item(title: str, summary: str) -> tuple[str, str]:
-    """Başlık ve özeti tek Claude çağrısıyla birlikte çevirir."""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        return title, summary
-
+def _mymemory_translate(text: str) -> str:
+    """MyMemory ücretsiz API ile İngilizce → Türkçe çeviri."""
+    if not text or len(text.strip()) < 3:
+        return text
     try:
-        client = _claude_client()
-        msg = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=600,
-            messages=[{
-                "role": "user",
-                "content": (
-                    "Aşağıdaki İngilizce spor haberi başlığını ve özetini Türkçeye çevir.\n"
-                    "KURALLAR:\n"
-                    "- Takım adlarını (Manchester City, Real Madrid vb.) olduğu gibi bırak.\n"
-                    "- Oyuncu ve antrenör isimlerini olduğu gibi bırak.\n"
-                    "- Ülke ve şehir adlarını doğru çevir (USA → ABD, England → İngiltere).\n"
-                    "- Lig adlarını olduğu gibi bırak (Premier League, La Liga vb.).\n"
-                    "- Yanıtı SADECE şu formatta ver (başka hiçbir şey yazma):\n"
-                    "BAŞLIK: [çevrilmiş başlık]\n"
-                    "ÖZET: [çevrilmiş özet]\n\n"
-                    f"BAŞLIK: {title}\n"
-                    f"ÖZET: {summary}"
-                ),
-            }],
+        resp = requests.get(
+            "https://api.mymemory.translated.net/get",
+            params={"q": text[:500], "langpair": "en|tr"},
+            timeout=8,
         )
-        raw = msg.content[0].text.strip()
-        tr_title   = title
-        tr_summary = summary
-        for line in raw.splitlines():
-            if line.startswith("BAŞLIK:"):
-                tr_title = line[len("BAŞLIK:"):].strip() or title
-            elif line.startswith("ÖZET:"):
-                tr_summary = line[len("ÖZET:"):].strip() or summary
-        return tr_title, tr_summary
+        data = resp.json()
+        translated = data.get("responseData", {}).get("translatedText", "")
+        if translated and translated.upper() != text.upper():
+            return translated
     except Exception as e:
-        log.debug(f"Çeviri hatası (Claude): {e}")
-        return title, summary
+        log.debug(f"MyMemory hatası: {e}")
+    return text
+
+
+def translate_item(title: str, summary: str) -> tuple[str, str]:
+    """Başlık ve özeti çevirir. Önce Claude, yoksa MyMemory fallback."""
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+
+    # Claude varsa kullan
+    if api_key:
+        try:
+            client = _claude_client()
+            msg = client.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=600,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "Aşağıdaki İngilizce spor haberi başlığını ve özetini Türkçeye çevir.\n"
+                        "KURALLAR:\n"
+                        "- Takım adlarını (Manchester City, Real Madrid vb.) olduğu gibi bırak.\n"
+                        "- Oyuncu ve antrenör isimlerini olduğu gibi bırak.\n"
+                        "- Ülke ve şehir adlarını doğru çevir (USA → ABD, England → İngiltere).\n"
+                        "- Lig adlarını olduğu gibi bırak (Premier League, La Liga vb.).\n"
+                        "- Yanıtı SADECE şu formatta ver (başka hiçbir şey yazma):\n"
+                        "BAŞLIK: [çevrilmiş başlık]\n"
+                        "ÖZET: [çevrilmiş özet]\n\n"
+                        f"BAŞLIK: {title}\n"
+                        f"ÖZET: {summary}"
+                    ),
+                }],
+            )
+            raw = msg.content[0].text.strip()
+            tr_title   = title
+            tr_summary = summary
+            for line in raw.splitlines():
+                if line.startswith("BAŞLIK:"):
+                    tr_title = line[len("BAŞLIK:"):].strip() or title
+                elif line.startswith("ÖZET:"):
+                    tr_summary = line[len("ÖZET:"):].strip() or summary
+            return tr_title, tr_summary
+        except Exception as e:
+            log.debug(f"Çeviri hatası (Claude): {e}")
+
+    # Fallback: MyMemory ücretsiz API
+    log.debug("MyMemory fallback ile çevriliyor...")
+    tr_title   = _mymemory_translate(title)
+    tr_summary = _mymemory_translate(summary) if summary else summary
+    time.sleep(0.5)  # rate limit
+    return tr_title, tr_summary
 
 # ── RSS kaynakları ─────────────────────────────────────────────────────────────
 
