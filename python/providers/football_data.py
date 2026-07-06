@@ -11,8 +11,19 @@ Kısıtlar:
 """
 
 import time
+import logging
 import requests
 from datetime import datetime, timedelta, timezone
+
+log = logging.getLogger(__name__)
+
+# Geçici ağ hataları — retry edilir
+_TRANSIENT = (
+    requests.exceptions.SSLError,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+    requests.exceptions.ChunkedEncodingError,
+)
 
 # Config'den import — circular import önlemek için lazy
 def _cfg():
@@ -35,7 +46,7 @@ LEAGUE_MAP: dict[str, str] = {
 
 _last_request = 0.0
 
-def _get(endpoint: str, params: dict | None = None) -> dict:
+def _get(endpoint: str, params: dict | None = None, _retries: int = 3) -> dict:
     global _last_request
     key, _ = _cfg()
 
@@ -44,20 +55,33 @@ def _get(endpoint: str, params: dict | None = None) -> dict:
     if elapsed < 6.1:
         time.sleep(6.1 - elapsed)
 
-    resp = requests.get(
-        f"{BASE_URL}/{endpoint}",
-        headers={"X-Auth-Token": key},
-        params=params or {},
-        timeout=15,
-    )
-    _last_request = time.time()
+    last_exc: Exception | None = None
+    for attempt in range(_retries):
+        try:
+            resp = requests.get(
+                f"{BASE_URL}/{endpoint}",
+                headers={"X-Auth-Token": key},
+                params=params or {},
+                timeout=15,
+            )
+            _last_request = time.time()
 
-    if resp.status_code == 429:
-        time.sleep(60)
-        return _get(endpoint, params)
+            if resp.status_code == 429:
+                time.sleep(60)
+                return _get(endpoint, params, _retries)
 
-    resp.raise_for_status()
-    return resp.json()
+            resp.raise_for_status()
+            return resp.json()
+        except _TRANSIENT as e:
+            # Geçici ağ hatası → artan bekleme ile tekrar dene
+            last_exc = e
+            _last_request = time.time()
+            wait = 3 * (attempt + 1)
+            log.warning(f"football-data ağ hatası ({endpoint}), {attempt + 1}/{_retries} deneme: {type(e).__name__} — {wait}s bekleniyor")
+            time.sleep(wait)
+
+    # Tüm denemeler başarısız
+    raise last_exc if last_exc else RuntimeError(f"football-data isteği başarısız: {endpoint}")
 
 
 def get_fixtures(league_code: str) -> list[dict]:
@@ -69,10 +93,15 @@ def get_fixtures(league_code: str) -> list[dict]:
     today = datetime.now(timezone.utc).date()
     end   = today + timedelta(days=days)
 
-    data = _get(
-        f"competitions/{league_code}/matches",
-        {"status": "SCHEDULED", "dateFrom": today.isoformat(), "dateTo": end.isoformat()},
-    )
+    try:
+        data = _get(
+            f"competitions/{league_code}/matches",
+            {"status": "SCHEDULED", "dateFrom": today.isoformat(), "dateTo": end.isoformat()},
+        )
+    except Exception as e:
+        # Bir lig çekilemezse tüm botu çökertme — boş dön, diğer ligler devam etsin
+        log.warning(f"{league_code} maçları çekilemedi, atlanıyor: {type(e).__name__} — {e}")
+        return []
 
     results = []
     for m in data.get("matches", []):
@@ -93,7 +122,12 @@ def get_last5_fixtures(team_id: int) -> list[dict]:
     """
     Takımın son 5 tamamlanmış maçını ortak formata normalize eder.
     """
-    data = _get(f"teams/{team_id}/matches", {"status": "FINISHED", "limit": 5})
+    try:
+        data = _get(f"teams/{team_id}/matches", {"status": "FINISHED", "limit": 5})
+    except Exception as e:
+        log.warning(f"Takım {team_id} son maçları çekilemedi: {type(e).__name__} — {e}")
+        return []
+
     results = []
     for m in data.get("matches", []):
         score = m.get("score", {}).get("fullTime", {})
