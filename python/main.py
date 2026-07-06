@@ -29,7 +29,7 @@ from analyzer import (
 )
 from api_client import get_last5_fixtures, get_team_card_stats
 from predictor import _find_team_id, _calc_team_stats
-from db_client import upsert_matches, upsert_coupons, delete_today_coupons, get_setting, set_setting
+from db_client import upsert_matches, upsert_coupons, delete_today_coupons, get_setting, set_setting, get_existing_analyses
 from models import MatchRecord, MissingPlayer, CouponRecord
 from news_fetcher import run_news_fetch
 from predictor import analyze_with_claude
@@ -283,6 +283,12 @@ def run():
     # Provider'a göre lig listesi seç
     leagues = FOOTBALL_DATA_LEAGUES if PROVIDER == "football_data" else [str(i) for i in LEAGUE_IDS]
 
+    # Kredi tasarrufu: zaten analiz edilmiş, başlamasına 48+ saat olan maçlarda
+    # Claude'u tekrar çağırma — mevcut analizi yeniden kullan
+    existing_analyses = get_existing_analyses()
+    REANALYZE_WINDOW_H = 48
+    reused_count = 0
+
     for league_ref in leagues:
         season = current_league_season(league_ref)
         log.info(f"Lig {league_ref} | Sezon {season} | Provider: {PROVIDER}")
@@ -392,22 +398,46 @@ def run():
                     srcs = ", ".join(match_market_odds.get("sources", []))
                     log.info(f"    Piyasa oranı bulundu ({srcs}): MS1={match_market_odds.get('ms1')} X={match_market_odds.get('x')} MS2={match_market_odds.get('ms2')}")
 
-                # Claude AI analizi (API key yoksa kural tabanlı)
-                ai_result = analyze_with_claude(
-                    home_name, away_name,
-                    home_last5, away_last5,
-                    home_cards, away_cards,
-                    home_form, away_form,
-                    home_xg_raw, away_xg_raw,
-                    home_inj, away_inj,
-                    home_missing + away_missing,
-                    third_party_pred=third_party_pred,
-                    league_ref=league_ref,
-                    market_odds=match_market_odds,
-                    home_web_form=home_web_form,
-                    away_web_form=away_web_form,
-                    h2h_fixtures=match_h2h,
-                )
+                # Kredi tasarrufu: zaten analiz edilmiş ve başlamasına 48+ saat olan
+                # maçta Claude'u tekrar çağırma — mevcut analizi yeniden kullan
+                match_uuid = fixture_uuid(fixture_id)
+                prev = existing_analyses.get(match_uuid)
+                reuse = None
+                if prev and prev.get("analysis"):
+                    try:
+                        kickoff = datetime.fromisoformat(str(match_time).replace("Z", "+00:00"))
+                        hours_until = (kickoff - datetime.now(timezone.utc)).total_seconds() / 3600
+                    except Exception:
+                        hours_until = 0
+                    if hours_until > REANALYZE_WINDOW_H:
+                        reuse = prev
+
+                if reuse:
+                    ai_result = {
+                        "prediction":            reuse.get("prediction"),
+                        "prediction_confidence": reuse.get("prediction_confidence") or 0,
+                        "analysis":              reuse.get("analysis"),
+                        "alternatives":          reuse.get("alternatives") or [],
+                    }
+                    reused_count += 1
+                    log.info(f"    ↻ Mevcut analiz kullanıldı (Claude atlandı, ~{round(hours_until)}s kaldı)")
+                else:
+                    # Claude AI analizi (API key yoksa kural tabanlı)
+                    ai_result = analyze_with_claude(
+                        home_name, away_name,
+                        home_last5, away_last5,
+                        home_cards, away_cards,
+                        home_form, away_form,
+                        home_xg_raw, away_xg_raw,
+                        home_inj, away_inj,
+                        home_missing + away_missing,
+                        third_party_pred=third_party_pred,
+                        league_ref=league_ref,
+                        market_odds=match_market_odds,
+                        home_web_form=home_web_form,
+                        away_web_form=away_web_form,
+                        h2h_fixtures=match_h2h,
+                    )
 
                 all_missing = [
                     MissingPlayer(**p) for p in home_missing + away_missing
@@ -447,6 +477,9 @@ def run():
 
             # API rate-limit koruması
             time.sleep(0.4)
+
+    if reused_count:
+        log.info(f"Kredi tasarrufu: {reused_count} maç mevcut analizle kullanıldı (Claude atlandı)")
 
     # Ücretsiz vitrin maçları — CUMA'dan CUMA'ya rotasyon (her Cuma değişir)
     if analyzed_all:

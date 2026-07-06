@@ -66,6 +66,31 @@ def upsert_coupons(coupons: list[CouponRecord]) -> int:
     return count
 
 
+def get_existing_analyses() -> dict[str, dict]:
+    """
+    Yaklaşan maçların mevcut Claude analizlerini id → veri sözlüğü olarak döner.
+    Bot, 48 saatten uzak ve zaten analiz edilmiş maçlarda Claude'u tekrar
+    çağırmamak için bunu kullanır (kredi tasarrufu).
+    """
+    client = _get_client()
+    try:
+        res = (
+            client.table("matches")
+            .select("id, prediction, prediction_confidence, analysis, alternatives, match_time")
+            .neq("status", "bitti")
+            .not_.is_("analysis", "null")
+            .execute()
+        )
+    except Exception as e:
+        log.warning(f"Mevcut analizler çekilemedi: {e}")
+        return {}
+
+    out: dict[str, dict] = {}
+    for row in res.data or []:
+        out[row["id"]] = row
+    return out
+
+
 def get_setting(key: str) -> dict | None:
     """app_settings tablosundan bir ayarı okur."""
     client = _get_client()
