@@ -49,8 +49,10 @@ test.describe('Smoke — JS hatası yok', () => {
         if (msg.type() === 'error' && isOwnError(msg.text())) errors.push(msg.text())
       })
 
-      await page.goto(path, { waitUntil: 'networkidle' })
-      await page.waitForTimeout(2000)
+      // networkidle KULLANMA: reklam/tawk.to/canlı bağlantı sürekli istek atar,
+      // ağ asla "idle" olmaz. Hydration + WebSocket hataları ilk saniyelerde çıkar.
+      await page.goto(path, { waitUntil: 'domcontentloaded' })
+      await page.waitForTimeout(3000)
 
       // Hydration ve WebSocket hataları özellikle yakalanmalı
       const hydration = errors.filter(e => /hydrat|#418|#419|#423/i.test(e))
